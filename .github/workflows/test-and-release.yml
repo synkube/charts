@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       charts: ${{ steps.matrix.outputs.charts }}
+      charts-to-test: ${{ steps.matrix.outputs.charts-to-test }}
       has-changes: ${{ steps.matrix.outputs.has-changes }}
     steps:
       - uses: actions/checkout@v4
@@ -83,24 +84,41 @@ jobs:
 
           echo "Final charts to process: ${changed_charts[@]}"
 
+          # Filter out 'common' for testing (library charts can't be templated)
+          charts_to_test=()
+          for chart in "${changed_charts[@]}"; do
+            if [ "$chart" != "common" ]; then
+              charts_to_test+=("$chart")
+            fi
+          done
+          echo "Charts to test: ${charts_to_test[@]}"
+
           # Create JSON output
           if [ ${#changed_charts[@]} -eq 0 ]; then
             echo "charts=[]" >> $GITHUB_OUTPUT
+            echo "charts-to-test=[]" >> $GITHUB_OUTPUT
             echo "has-changes=false" >> $GITHUB_OUTPUT
           else
             charts_output=$(jq -nc '[$ARGS.positional[]]' --args "${changed_charts[@]}")
             echo "charts=$charts_output" >> $GITHUB_OUTPUT
+
+            if [ ${#charts_to_test[@]} -eq 0 ]; then
+              echo "charts-to-test=[]" >> $GITHUB_OUTPUT
+            else
+              charts_to_test_output=$(jq -nc '[$ARGS.positional[]]' --args "${charts_to_test[@]}")
+              echo "charts-to-test=$charts_to_test_output" >> $GITHUB_OUTPUT
+            fi
             echo "has-changes=true" >> $GITHUB_OUTPUT
           fi
 
   test-charts:
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.has-changes == 'true' }}
+    if: ${{ needs.detect-changes.outputs.has-changes == 'true' && needs.detect-changes.outputs.charts-to-test != '[]' }}
     strategy:
       fail-fast: false
       matrix:
-        chart: ${{ fromJSON(needs.detect-changes.outputs.charts) }}
+        chart: ${{ fromJSON(needs.detect-changes.outputs.charts-to-test) }}
 
     steps:
       - uses: actions/checkout@v4
@@ -153,7 +171,7 @@ jobs:
   publish-charts:
     runs-on: ubuntu-latest
     needs: [detect-changes, test-charts]
-    if: ${{ needs.detect-changes.outputs.has-changes == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    if: ${{ always() && needs.detect-changes.outputs.has-changes == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && (needs.test-charts.result == 'success' || needs.test-charts.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:
@@ -213,7 +231,7 @@ jobs:
   publish-pages:
     runs-on: ubuntu-latest
     needs: [detect-changes, publish-charts]
-    if: ${{ needs.detect-changes.outputs.has-changes == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    if: ${{ always() && needs.publish-charts.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     permissions:
       contents: read
       pages: write
