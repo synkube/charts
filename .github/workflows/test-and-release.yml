@@ -218,8 +218,8 @@ jobs:
 
   publish-pages:
     runs-on: ubuntu-latest
-    needs: [detect-changes, publish-oci]
-    if: ${{ always() && needs.publish-oci.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [detect-changes, test]
+    if: ${{ always() && needs.test.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     permissions:
       contents: write # Required for chart-releaser to push to gh-pages branch
 
@@ -267,6 +267,7 @@ jobs:
           CR_TOKEN: ${{ github.token }}
         with:
           charts_dir: charts
+          mark_as_latest: false
 
       - name: Pages Summary
         run: |
