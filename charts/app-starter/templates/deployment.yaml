@@ -1,0 +1,193 @@
+{{- if and .Values.deployment.enabled (not .Values.statefulSet.enabled) -}}
+{{- $fullname := include "app-starter.fullname" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "app-starter.fullname" . }}
+  {{- if or .Values.deployment.annotations .Values.reloader.enabled }}
+  annotations:
+    {{-  range $key, $value := .Values.deployment.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- include "app-starter.reloaderAnnotations" . | nindent 4 }}
+  {{- end }}
+  labels:
+{{ include "app-starter.labels" . | indent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "app-starter.selectorLabels" . | nindent 6 }}
+  {{- with .Values.deployment.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- end }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- include "app-starter.configChecksums" $ | nindent 8 }}
+        {{- range $key, $value := . }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+      {{- else }}
+      {{- if or .Values.secrets .Values.configMaps }}
+      annotations:
+        {{- include "app-starter.configChecksums" . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      labels:
+        {{- include "app-starter.selectorLabels" . | nindent 8 }}
+        {{-  range $key, $value := .Values.podLabels }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ template "app-starter.serviceAccountName" . }}
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      restartPolicy: {{ .Values.restartPolicy }}
+      {{- with .Values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ . }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Values.container.name | default .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.container.command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.container.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.container.lifecycle }}
+          lifecycle:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if or .Values.container.env .Values.container.envMap .Values.container.extraEnv }}
+          env:
+            {{- include "app-starter.mergedEnv" . | nindent 12 }}
+          {{- end }}
+          {{- if or .Values.container.envFrom .Values.container.envFromSecretName .Values.container.envFromConfigmaps }}
+          envFrom:
+            {{- with .Values.container.envFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- if .Values.container.envFromSecretName  }}
+            - secretRef:
+                name: {{ .Values.container.envFromSecretName }}
+            {{- end }}
+            {{- if .Values.container.envFromConfigmaps  }}
+            {{- range .Values.container.envFromConfigmaps }}
+            - configMapRef:
+                name: {{ . | quote }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+          {{- with .Values.container.ports }}
+          ports:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.container.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.container.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.container.startupProbe }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.container.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.container.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if or (.Values.configMaps) (.Values.secretMounts) (.Values.container.volumeMounts) (.Values.persistence.enabled)}}
+          volumeMounts:
+            {{- if .Values.configMaps }}
+              {{-  range $key, $value := .Values.configMaps }}
+              {{- if .mountPath }}
+            - name: config-dir
+              mountPath: {{ .mountPath }}
+              subPath: {{ $key }}
+              {{- end }}
+              {{- end }}
+            {{- end }}
+            {{- with .Values.container.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- if .Values.persistence.enabled }}
+            - name: {{ .Values.persistence.volumeName }}
+              mountPath: {{ .Values.persistence.mountPath | default "/data" }}
+            {{- end }}
+            {{- if .Values.secretMounts }}
+            {{-  range $key, $value := .Values.secretMounts }}
+            - name: {{ $key }}
+              mountPath: {{ .mountPath }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+        {{- with .Values.additionalContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- if or (.Values.configMaps) (.Values.secretMounts) (.Values.container.volumes) (.Values.persistence.enabled)}}
+      volumes:
+        {{- with .Values.container.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.configMaps }}
+        - name: config-dir
+          configMap:
+            name: {{ include "app-starter.fullname" . }}
+        {{- end }}
+        {{- if .Values.persistence.enabled }}
+        - name: {{ .Values.persistence.volumeName }}
+          persistentVolumeClaim:
+            claimName: {{ include "app-starter.fullname" . }}
+        {{- end }}
+        {{- if .Values.secretMounts }}
+          {{-  range $key, $value := .Values.secretMounts }}
+        - name: {{ $key }}
+          secret:
+            secretName: {{ $key }}
+            items:
+              - key: {{ .secretKey }}
+                path: {{ .fileName }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end -}}

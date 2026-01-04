@@ -1,0 +1,223 @@
+# Test 18: Helm Templating Features
+# Demonstrates: tpl support in secrets, env vars, configmaps, and migration commands
+replicaCount: 2
+
+image:
+  repository: nginx
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+container:
+  name: "webapp"
+
+  # Container command and args
+  command: ["/bin/sh"]
+  args: ["-c", "nginx -g 'daemon off;'"]
+
+  ports:
+    - name: http
+      containerPort: 80
+      protocol: TCP
+
+  # Environment variables with templating support
+  env:
+    - name: APP_NAME
+      value: "templating-demo"
+    - name: LOG_LEVEL
+      value: "info"
+    # Templated values - dynamic based on Helm context
+    - name: RELEASE_NAME
+      value: "{{ .Release.Name }}"
+    - name: NAMESPACE
+      value: "{{ .Release.Namespace }}"
+    - name: CHART_VERSION
+      value: "{{ .Chart.Version }}"
+    # Test that valueFrom is NOT templated (preserved for K8s)
+    - name: SECRET_REF
+      valueFrom:
+        secretKeyRef:
+          name: external-secret
+          key: password
+
+  # envMap with templating
+  envMap:
+    FEATURE_FLAG: "true"
+    MAX_CONNECTIONS: "100"
+    # Templated values
+    POD_NAME: "{{ .Chart.Name }}"
+    APP_VERSION: "{{ .Chart.Version }}"
+    CONTAINER_PORT: "{{ (index .Values.container.ports 0).containerPort }}"
+    # Complex reference
+    FULL_SERVICE_NAME: "{{ include `app-starter.fullname` . }}"
+
+  # Resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  livenessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 10
+
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 5
+
+# Secrets with templating - build dynamic connection strings
+secrets:
+  API_KEY: "static-secret-key-12345"
+  # Dynamic secrets using templating
+  DATABASE_URL: "postgresql://user:pass@{{ .Release.Name }}-db:5432/myapp"
+  REDIS_URL: "redis://{{ .Release.Name }}-redis:6379"
+  SERVICE_URL: "https://{{ (index .Values.ingress.hosts 0).host }}"
+  FULL_NAME: "{{ include `app-starter.fullname` . }}"
+  NAMESPACE: "{{ .Release.Namespace }}"
+
+service:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+
+# ConfigMaps with templating
+configMaps:
+  # Mounted as file with templating
+  nginx.conf:
+    mountPath: /etc/nginx/nginx.conf
+    content: |-
+      events {
+        worker_connections 1024;
+      }
+      http {
+        server {
+          listen {{ (index .Values.container.ports 0).containerPort }};
+          server_name {{ (index .Values.ingress.hosts 0).host }};
+          location / {
+            root /usr/share/nginx/html;
+            index index.html;
+          }
+          location /health {
+            access_log off;
+            return 200 "healthy from {{ .Release.Name }}\n";
+            add_header Content-Type text/plain;
+          }
+        }
+      }
+
+  # HTML with dynamic content
+  index.html:
+    mountPath: /usr/share/nginx/html/index.html
+    content: |-
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>{{ .Chart.Name }} - {{ .Release.Name }}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 40px; }
+          .info { background: #f0f0f0; padding: 20px; border-radius: 5px; }
+          code { background: #e0e0e0; padding: 2px 6px; border-radius: 3px; }
+        </style>
+      </head>
+      <body>
+        <h1>Helm Templating Demo</h1>
+        <div class="info">
+          <p><strong>Release Name:</strong> <code>{{ .Release.Name }}</code></p>
+          <p><strong>Namespace:</strong> <code>{{ .Release.Namespace }}</code></p>
+          <p><strong>Chart:</strong> <code>{{ .Chart.Name }} v{{ .Chart.Version }}</code></p>
+          <p><strong>Image:</strong> <code>{{ .Values.image.repository }}:{{ .Values.image.tag }}</code></p>
+          <p><strong>Full Name:</strong> <code>{{ include `app-starter.fullname` . }}</code></p>
+        </div>
+      </body>
+      </html>
+
+  # Application config with templating
+  app-config.yaml:
+    mountPath: /etc/app/config.yaml
+    content: |-
+      application:
+        name: {{ .Release.Name }}
+        environment: {{ .Release.Namespace }}
+        version: {{ .Chart.Version }}
+
+      services:
+        database:
+          host: {{ .Release.Name }}-db
+          port: 5432
+        redis:
+          host: {{ .Release.Name }}-redis
+          port: 6379
+        api:
+          url: https://{{ (index .Values.ingress.hosts 0).host }}
+
+      metadata:
+        deployed_at: "{{ .Release.Time }}"
+        managed_by: {{ .Release.Service }}
+
+  # Stored in ConfigMap but NOT mounted (no mountPath)
+  metadata.json:
+    content: |-
+      {
+        "app": "{{ .Release.Name }}",
+        "chart": "{{ .Chart.Name }}",
+        "version": "{{ .Chart.Version }}",
+        "namespace": "{{ .Release.Namespace }}",
+        "fullName": "{{ include `app-starter.fullname` . }}",
+        "description": "This data is in the ConfigMap but not mounted to the container"
+      }
+
+# Ingress with templated hosts
+ingress:
+  enabled: true
+  className: nginx
+  servicePortName: http
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: "{{ .Release.Name }}.example.com"  # Templated host
+      pathType: Prefix
+      paths:
+        - /
+    - host: templating-demo.example.com  # Static host
+      pathType: Prefix
+      paths:
+        - /api
+  tls:
+    - secretName: "{{ .Release.Name }}-tls"
+      hosts:
+        - "{{ .Release.Name }}.example.com"  # Templated host
+        - templating-demo.example.com
+
+# Migrations with templating in commands
+migrations:
+  enabled: true
+  commands:
+    - "echo 'Running migrations for {{ .Release.Name }} in {{ .Release.Namespace }}'"
+    - "npm run migrate -- --release={{ .Release.Name }}"
+    - "npm run seed -- --env={{ .Release.Namespace }}"
+    - "echo 'Migration complete for {{ include `app-starter.fullname` . }}'"
+
+# Gateway API with templated hostnames (alternative to Ingress - disabled here)
+gateway:
+  enabled: false
+  servicePort: 80
+  parentRefs:
+    - name: my-gateway
+      namespace: gateway-system
+  hostnames:
+    - "{{ .Release.Name }}.gateway.example.com"  # Templated hostname
+    - "{{ .Release.Name }}-api.gateway.example.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+

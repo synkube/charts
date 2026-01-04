@@ -1,0 +1,104 @@
+# Test case: Web app with sidecar containers
+# Demonstrates:
+# - container.* prefix for main container config
+# - additionalContainers for sidecars
+# - Shared volumes between containers
+
+deployment:
+  enabled: true
+
+image:
+  repository: nginx
+  tag: "1.25"
+
+container:
+  name: web
+  ports:
+    - name: http
+      containerPort: 80
+
+  # Container-specific config under container.*
+  env:
+    - name: APP_NAME
+      value: "myapp"
+    - name: LOG_LEVEL
+      value: "info"
+
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 15
+
+  readinessProbe:
+    httpGet:
+      path: /ready
+      port: http
+    initialDelaySeconds: 10
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  # Mount shared volume
+  volumeMounts:
+    - name: shared-logs
+      mountPath: /var/log/app
+
+  # Define shared volume
+  volumes:
+    - name: shared-logs
+      emptyDir: {}
+
+# Additional sidecar containers
+additionalContainers:
+  - name: log-shipper
+    image: fluent/fluent-bit:latest
+    env:
+      - name: FLUENT_HOST
+        value: "loki.monitoring.svc"
+    ports:
+      - name: metrics
+        containerPort: 2020
+    volumeMounts:
+      - name: shared-logs
+        mountPath: /logs
+        readOnly: true
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+  - name: metrics-exporter
+    image: prom/statsd-exporter:latest
+    ports:
+      - name: metrics
+        containerPort: 9102
+    env:
+      - name: STATSD_PORT
+        value: "9125"
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+service:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+    - port: 9102
+      targetPort: 9102
+      name: metrics
+

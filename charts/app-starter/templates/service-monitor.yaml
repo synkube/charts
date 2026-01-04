@@ -1,0 +1,28 @@
+{{- if and .Values.serviceMonitor.enabled (include "common.hasApi" (list "monitoring.coreos.com/v1/ServiceMonitor" .)) }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Values.serviceMonitor.label | default (include "app-starter.fullname" .) }}
+  labels:
+{{ include "app-starter.labels" . | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "app-starter.selectorLabels" . | nindent 6 }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - path: "{{ .Values.serviceMonitor.path | default "/metrics" }}"
+      port: "{{ .Values.serviceMonitor.port | default "metrics" }}"
+      {{- if .Values.serviceMonitor.interval }}
+      interval: "{{ .Values.serviceMonitor.interval }}"
+      {{- end }}
+      {{- if .Values.serviceMonitor.scrapeTimeout }}
+      scrapeTimeout: "{{ .Values.serviceMonitor.scrapeTimeout }}"
+      {{- end }}
+{{- else if and .Values.serviceMonitor.enabled (not (include "common.hasApi" (list "monitoring.coreos.com/v1/ServiceMonitor" .))) }}
+# Warning: ServiceMonitor CRD not available in this cluster
+# Install Prometheus Operator to use ServiceMonitor resources
+# https://github.com/prometheus-operator/prometheus-operator
+{{- end }}

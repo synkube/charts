@@ -1,0 +1,46 @@
+# Test case: Deployment with PersistentVolumeClaim
+# Tests persistence pattern for Deployment (vs StatefulSet's volumeClaimTemplates)
+
+deployment:
+  enabled: true
+
+image:
+  repository: postgres
+  tag: "15-alpine"
+
+container:
+  ports:
+    - name: postgres
+      containerPort: 5432
+
+  env:
+    - name: POSTGRES_PASSWORD
+      value: "testpassword"
+    - name: PGDATA
+      value: "/data/pgdata"
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+# Persistence with PVC (for Deployment)
+persistence:
+  enabled: true
+  storageClass: "standard"
+  size: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  volumeName: data
+  mountPath: /data
+
+service:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+

@@ -1,0 +1,70 @@
+# Test 3: gRPC service with multiple ports and ServiceMonitor
+replicaCount: 3
+
+image:
+  repository: myapp/grpc-service
+  tag: "v2.1.0"
+  pullPolicy: Always
+
+container:
+  ports:
+    - name: http
+      containerPort: 8080
+      protocol: TCP
+    - name: grpc
+      containerPort: 9090
+      protocol: TCP
+    - name: metrics
+      containerPort: 9091
+      protocol: TCP
+
+service:
+  type: ClusterIP
+  labels:
+    monitoring: enabled
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+    - port: 9090
+      targetPort: 9090
+      name: grpc
+    - port: 9091
+      targetPort: 9091
+      name: metrics
+
+ingress:
+  enabled: true
+  className: nginx
+  servicePortName: http
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+  hosts:
+    - host: grpc.example.com
+      pathType: Prefix
+      paths:
+        - /
+
+serviceMonitor:
+  enabled: true
+  label: grpc-metrics
+  path: /metrics
+  port: metrics
+  interval: 30s
+  scrapeTimeout: 10s
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+

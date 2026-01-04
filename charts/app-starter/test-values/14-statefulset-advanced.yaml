@@ -1,0 +1,144 @@
+# Test case: StatefulSet with advanced configuration
+# Tests: StatefulSet updateStrategy, podManagementPolicy, annotations, init containers
+
+statefulSet:
+  enabled: true
+  annotations:
+    statefulset.kubernetes.io/pod-name: "custom-pod"
+
+  # Parallel pod management for faster scaling
+  podManagementPolicy: Parallel
+
+  # Custom update strategy with partition
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 2  # Update pods with ordinal >= 2 first
+
+deployment:
+  enabled: false
+
+replicaCount: 5
+
+fullnameOverride: "db-cluster"
+
+image:
+  repository: postgres
+  tag: "15-alpine"
+
+# Init containers
+initContainers:
+  - name: init-permissions
+    image: busybox:latest
+    command: ['sh', '-c', 'chmod 700 /data && chown 999:999 /data']
+    volumeMounts:
+      - name: data
+        mountPath: /data
+
+  - name: wait-for-network
+    image: busybox:latest
+    command: ['sh', '-c', 'until nc -z service-discovery 53; do echo waiting for DNS; sleep 2; done']
+
+container:
+  ports:
+    - name: postgres
+      containerPort: 5432
+    - name: metrics
+      containerPort: 9187
+
+  env:
+    - name: POSTGRES_PASSWORD
+      value: "testpassword"
+    - name: PGDATA
+      value: "/data/pgdata"
+    - name: POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+
+  livenessProbe:
+    exec:
+      command:
+        - pg_isready
+        - -U
+        - postgres
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+  readinessProbe:
+    exec:
+      command:
+        - pg_isready
+        - -U
+        - postgres
+    initialDelaySeconds: 10
+    periodSeconds: 5
+
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+
+  securityContext:
+    runAsUser: 999
+    runAsGroup: 999
+    runAsNonRoot: true
+
+podSecurityContext:
+  fsGroup: 999
+
+# Persistence with volumeClaimTemplates (StatefulSet)
+persistence:
+  enabled: true
+  storageClass: "fast-ssd"
+  size: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  volumeName: data
+  mountPath: /data
+
+# Headless service for StatefulSet
+service:
+  type: ClusterIP
+  headless: true
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+    - port: 9187
+      targetPort: 9187
+      name: metrics
+
+# PodDisruptionBudget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 3
+
+# Node affinity and tolerations
+nodeSelector:
+  disktype: ssd
+  workload: database
+
+tolerations:
+  - key: "dedicated"
+    operator: "Equal"
+    value: "database"
+    effect: "NoSchedule"
+
+# Pod anti-affinity for spreading across nodes
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - app-starter
+          topologyKey: kubernetes.io/hostname
+

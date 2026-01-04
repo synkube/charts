@@ -1,0 +1,91 @@
+# Test case: Environment variable merging
+# Demonstrates:
+# - container.env (array format)
+# - container.envMap (map format)
+# - container.extraEnv (override format)
+# - Merging with precedence: env → envMap → extraEnv
+# - Top-level secrets
+
+deployment:
+  enabled: true
+
+image:
+  repository: nginx
+  tag: "1.25"
+
+container:
+  ports:
+    - name: http
+      containerPort: 80
+
+  # Base environment variables (array format - Kubernetes native)
+  env:
+    - name: APP_NAME
+      value: "myapp"
+    - name: LOG_LEVEL
+      value: "info"
+    - name: PORT
+      value: "80"
+    - name: DB_HOST
+      value: "postgres.default.svc"
+    # Reference secrets directly (simple and explicit)
+    - name: API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: test-app-starter
+          key: API_KEY
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: test-app-starter
+          key: DB_PASSWORD
+
+  # Additional environment variables (map format - more readable)
+  # This will merge with env array above
+  envMap:
+    CACHE_ENABLED: "true"
+    CACHE_TTL: "3600"
+    FEATURE_FLAG_NEW_UI: "false"
+    # Override LOG_LEVEL from env (envMap takes precedence)
+    LOG_LEVEL: "debug"
+
+  # Extra environment variables (highest precedence - for overrides)
+  # These will override both env and envMap
+  extraEnv:
+    - name: FEATURE_FLAG_NEW_UI
+      value: "true"  # Override envMap value
+    - name: DEPLOYMENT_ENV
+      value: "production"
+    - name: BUILD_NUMBER
+      value: "12345"
+
+  # Environment from ConfigMap
+  envFrom:
+    - configMapRef:
+        name: app-config
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Top-level secrets (define the secret data)
+secrets:
+  API_KEY: "secret-api-key-value"
+  DB_PASSWORD: "secret-db-password"
+
+# Load all keys from a secret as env vars
+envFromSecretName: app-secrets
+
+# Load from multiple ConfigMaps
+envFromConfigmaps:
+  - global-config
+  - feature-flags
+
+service:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+

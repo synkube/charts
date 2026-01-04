@@ -1,0 +1,62 @@
+# Test case: Migration env overrides
+# Tests: migrations.env overrides container.env for duplicate names
+
+deployment:
+  enabled: true
+
+image:
+  repository: node
+  tag: "18-alpine"
+
+container:
+  ports:
+    - name: http
+      containerPort: 3000
+
+  # Base environment variables (shared by app and migrations)
+  env:
+    - name: DATABASE_URL
+      value: "postgres://db:5432/myapp"
+    - name: LOG_LEVEL
+      value: "info"
+    - name: APP_NAME
+      value: "myapp"
+    - name: NODE_ENV
+      value: "production"
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+service:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 3000
+      name: http
+
+# Enable migrations
+migrations:
+  enabled: true
+  backoffLimit: 3
+  commands:
+    - "npm run db:migrate"
+
+  # Migration-specific environment variables
+  # These OVERRIDE container.env if the name matches
+  env:
+    - name: LOG_LEVEL
+      value: "debug"  # Override: migrations need more logging
+    - name: MIGRATION_MODE
+      value: "up"     # Addition: migration-only variable
+    - name: DATABASE_URL
+      value: "postgres://db:5432/myapp?sslmode=require"  # Override: use SSL for migrations
+
+# Expected merged env for migrations:
+# - DATABASE_URL: "postgres://db:5432/myapp?sslmode=require"  (from migrations.env - OVERRIDE)
+# - LOG_LEVEL: "debug"                                        (from migrations.env - OVERRIDE)
+# - APP_NAME: "myapp"                                         (from container.env - INHERITED)
+# - NODE_ENV: "production"                                    (from container.env - INHERITED)
+# - MIGRATION_MODE: "up"                                      (from migrations.env - ADDITION)
+

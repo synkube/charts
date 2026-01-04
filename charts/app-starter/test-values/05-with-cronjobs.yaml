@@ -1,0 +1,69 @@
+# Test 5: Application with CronJobs
+replicaCount: 1
+
+image:
+  repository: myapp/worker
+  tag: "v1.0.0"
+  pullPolicy: IfNotPresent
+
+container:
+  ports:
+    - name: http
+      containerPort: 8080
+      protocol: TCP
+
+service:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8080
+      name: http
+
+cronjobs:
+  enabled: true
+  cronjob:
+    - name: cleanup-old-data
+      schedule: "0 2 * * *"
+      concurrencyPolicy: Forbid
+      successfulJobsHistoryLimit: 3
+      failedJobsHistoryLimit: 1
+      restartPolicy: OnFailure
+      command: ["/bin/sh"]
+      args:
+        - -c
+        - "echo 'Running cleanup...' && /app/cleanup.sh"
+      env:
+        - name: CLEANUP_DAYS
+          value: "30"
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+
+    - name: send-reports
+      schedule: "0 8 * * 1"
+      concurrencyPolicy: Forbid
+      successfulJobsHistoryLimit: 5
+      failedJobsHistoryLimit: 2
+      restartPolicy: Never
+      command: ["/bin/sh"]
+      args:
+        - -c
+        - "/app/send-weekly-report.sh"
+      env:
+        - name: REPORT_TYPE
+          value: "weekly"
+        - name: RECIPIENTS
+          value: "team@example.com"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+

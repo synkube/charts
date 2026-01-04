@@ -1,0 +1,57 @@
+{{- if and .Values.gateway.enabled (include "common.hasApi" (list "gateway.networking.k8s.io/v1/HTTPRoute" .)) }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "app-starter.fullname" . }}
+  {{- with .Values.gateway.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+{{ include "app-starter.labels" . | indent 4 }}
+spec:
+  {{- with .Values.gateway.parentRefs }}
+  parentRefs:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.gateway.hostnames }}
+  hostnames:
+    {{- range .Values.gateway.hostnames }}
+    - {{ tpl . $ }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.gateway.rules }}
+    - matches:
+        {{- toYaml .matches | nindent 8 }}
+      {{- with .filters }}
+      filters:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .timeouts }}
+      timeouts:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .backendRefs }}
+      backendRefs:
+        {{- range .backendRefs }}
+        - name: {{ .name | default (include "app-starter.fullname" $) }}
+          port: {{ .port | default $.Values.gateway.servicePort | default 80 }}
+          {{- with .weight }}
+          weight: {{ . }}
+          {{- end }}
+          {{- with .namespace }}
+          namespace: {{ . }}
+          {{- end }}
+        {{- end }}
+      {{- else }}
+      backendRefs:
+        - name: {{ include "app-starter.fullname" $ }}
+          port: {{ $.Values.gateway.servicePort | default 80 }}
+      {{- end }}
+    {{- end }}
+{{- else if and .Values.gateway.enabled (not (include "common.hasApi" (list "gateway.networking.k8s.io/v1/HTTPRoute" .))) }}
+# Warning: Gateway API CRDs not available in this cluster
+# Install Gateway API CRDs to use HTTPRoute resources
+# https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api
+{{- end }}

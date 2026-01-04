@@ -1,0 +1,185 @@
+# Test 6: Full-featured application with VPA, PDB, ServiceAccount
+replicaCount: 3
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 1
+
+reloader:
+  enabled: true
+  secretOnly: false
+
+image:
+  repository: myapp/full-featured
+  tag: "v3.0.0"
+  pullPolicy: Always
+
+imagePullSecrets:
+  - name: registry-credentials
+
+container:
+  ports:
+    - name: http
+      containerPort: 8080
+      protocol: TCP
+    - name: metrics
+      containerPort: 9090
+      protocol: TCP
+
+service:
+  type: ClusterIP
+  labels:
+    app-type: backend
+    monitoring: enabled
+  ports:
+    - port: 80
+      targetPort: 8080
+      name: http
+    - port: 9090
+      targetPort: 9090
+      name: metrics
+
+ingress:
+  enabled: true
+  className: nginx
+  servicePortName: http
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+  hosts:
+    - host: app.example.com
+      pathType: Prefix
+      paths:
+        - /
+  tls:
+    - secretName: app-tls
+      hosts:
+        - app.example.com
+
+serviceMonitor:
+  enabled: true
+  label: app-metrics
+  path: /metrics
+  port: metrics
+  interval: 15s
+
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/my-app-role
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+
+podLabels:
+  app-tier: backend
+  version: v3
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+env:
+  - name: APP_ENV
+    value: production
+  - name: LOG_LEVEL
+    value: info
+
+envFromConfigmaps:
+  - app-config
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+vpa:
+  enabled: true
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  customMetrics:
+    - type: Pods
+      pods:
+        metric:
+          name: http_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: "1000"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  successThreshold: 1
+
+startupProbe:
+  httpGet:
+    path: /startup
+    port: http
+  initialDelaySeconds: 0
+  periodSeconds: 5
+  failureThreshold: 30
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - app-starter
+          topologyKey: kubernetes.io/hostname
+
+tolerations:
+  - key: "workload-type"
+    operator: "Equal"
+    value: "backend"
+    effect: "NoSchedule"
+

@@ -1,0 +1,159 @@
+# Test 1: Simple web application with Deployment
+# Demonstrates: basic deployment, env vars, configmap mounting, ingress, and gateway
+replicaCount: 2
+
+image:
+  repository: nginx
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+container:
+  name: "webapp"
+
+  # Container command and args example
+  command: ["/bin/sh"]
+  args: ["-c", "nginx -g 'daemon off;'"]
+
+  ports:
+    - name: http
+      containerPort: 80
+      protocol: TCP
+
+  # Environment variables - multiple formats with templating support
+  env:
+    - name: APP_NAME
+      value: "simple-webapp"
+    - name: LOG_LEVEL
+      value: "info"
+
+  envMap:
+    FEATURE_FLAG: "true"
+    MAX_CONNECTIONS: "100"
+
+  # Load all keys from ConfigMaps as env vars (example - requires external ConfigMaps to exist)
+  # envFromConfigmaps:
+  #   - app-config
+  #   - shared-config
+
+  # Resources defined at container level
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  livenessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 10
+
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 5
+
+# Secrets with templating support
+secrets:
+  API_KEY: "static-secret-key-12345"
+  # Dynamic secrets using templating
+  DATABASE_URL: "postgresql://user:pass@{{ .Release.Name }}-db:5432/myapp"
+
+service:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+
+# ConfigMaps - can be mounted as files or just stored in ConfigMap
+# Supports Helm templating with {{ }} syntax
+configMaps:
+  # Mounted as file with templating
+  nginx.conf:
+    mountPath: /etc/nginx/nginx.conf
+    content: |-
+      events {
+        worker_connections 1024;
+      }
+      http {
+        server {
+          listen {{ (index .Values.container.ports 0).containerPort }};
+          server_name {{ (index .Values.ingress.hosts 0).host }};
+          location / {
+            root /usr/share/nginx/html;
+            index index.html;
+          }
+        }
+      }
+
+  # Mounted as file with templating
+  index.html:
+    mountPath: /usr/share/nginx/html/index.html
+    content: |-
+      <!DOCTYPE html>
+      <html>
+      <head><title>{{ .Chart.Name }} - {{ .Release.Name }}</title></head>
+      <body>
+        <h1>Hello from Kubernetes!</h1>
+        <p>Release: {{ .Release.Name }}</p>
+        <p>Namespace: {{ .Release.Namespace }}</p>
+        <p>Image: {{ .Values.image.repository }}:{{ .Values.image.tag }}</p>
+      </body>
+      </html>
+
+  # Stored in ConfigMap but NOT mounted (no mountPath specified)
+  # Useful for data that other tools might read from the ConfigMap directly
+  metadata.json:
+    content: |-
+      {
+        "app": "{{ .Release.Name }}",
+        "chart": "{{ .Chart.Name }}",
+        "version": "{{ .Chart.Version }}",
+        "namespace": "{{ .Release.Namespace }}",
+        "description": "This data is in the ConfigMap but not mounted to the container"
+      }
+
+# Traditional Ingress
+ingress:
+  enabled: true
+  className: nginx
+  servicePortName: http
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: myapp.example.com
+      pathType: Prefix
+      paths:
+        - /
+  tls:
+    - secretName: myapp-tls
+      hosts:
+        - myapp.example.com
+
+# Gateway API HTTPRoute (alternative to Ingress)
+gateway:
+  enabled: false  # Enable this to use Gateway API instead of Ingress
+  annotations:
+    example.com/owner: "platform-team"
+  servicePort: 80
+  parentRefs:
+    - name: my-gateway
+      namespace: gateway-system
+  hostnames:
+    - myapp-gateway.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            add:
+              - name: X-Custom-Header
+                value: "custom-value"
+

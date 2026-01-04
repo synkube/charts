@@ -1,0 +1,568 @@
+# =============================================================================
+# BASIC CONFIGURATION
+# =============================================================================
+
+nameOverride: ""
+fullnameOverride: ""
+
+# -- Number of replicas (ignored if autoscaling.enabled)
+replicaCount: 1
+
+# -- Workload type: Choose one
+deployment:
+  enabled: true
+  annotations: {}
+  strategy: {}
+  # strategy:
+  #   type: RollingUpdate
+  #   rollingUpdate:
+  #     maxUnavailable: 25%
+  #     maxSurge: 25%
+
+statefulSet:
+  enabled: false
+  annotations: {}
+  serviceName: ""  # Headless service name (defaults to chart fullname if empty)
+  podManagementPolicy: ""  # OrderedReady (default) or Parallel
+  updateStrategy: {}
+  # updateStrategy:
+  #   type: RollingUpdate
+  #   rollingUpdate:
+  #     partition: 0
+
+# =============================================================================
+# IMAGE CONFIGURATION
+# =============================================================================
+
+image:
+  repository: nginx
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+# - name: registry-credentials
+
+# =============================================================================
+# CONTAINER CONFIGURATION
+# =============================================================================
+
+container:
+  name: "main"
+
+  # Container ports - where the application actually listens
+  # These should match service.ports[].targetPort (not service.ports[].port)
+  # Example: App listens on 8080, but service exposes it as port 80
+  ports:
+    - name: http
+      containerPort: 8080
+      protocol: TCP
+
+  # Container-specific configuration
+  command: []
+  # command: ["/bin/sh"]
+  args: []
+  # args: ["-c", "myapp serve"]
+
+  lifecycle: {}
+  # lifecycle:
+  #   preStop:
+  #     exec:
+  #       command: ["/bin/sh", "-c", "sleep 10"]
+
+  # Environment variables (multiple formats supported for flexibility)
+  # These are merged with precedence: env → envMap → extraEnv (last wins)
+  # Supports Helm templating in value strings (not in valueFrom references)
+
+  # Format 1: Array (Kubernetes native, most explicit)
+  env: []
+  # env:
+  #   - name: MY_VAR
+  #     value: "my-value"
+  #   - name: RELEASE_NAME            # Templated values
+  #     value: "{{ .Release.Name }}"
+  #   - name: NAMESPACE
+  #     value: "{{ .Release.Namespace }}"
+  #   - name: SECRET_KEY              # Reference secret directly (no templating in valueFrom)
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: my-secret            # External secret
+  #         key: key
+  #   - name: API_KEY                 # Or reference chart's secrets
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: my-release-name      # Use {{ include "app-starter.fullname" . }}
+  #         key: API_KEY
+
+  # Format 2: Map/Object (more readable for simple values, good for values file merging)
+  envMap: {}
+  # envMap:
+  #   MY_VAR: "my-value"
+  #   ANOTHER_VAR: "another-value"
+  #   # Templated values
+  #   DATABASE_HOST: "{{ .Release.Name }}-postgres"
+  #   APP_URL: "https://{{ (index .Values.ingress.hosts 0).host }}"
+  #   # Complex format also supported (no templating in valueFrom):
+  #   SECRET_KEY:
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: my-secret
+  #         key: key
+
+  # Format 3: Extra env (for overrides/additions, takes highest precedence)
+  extraEnv: []
+  # extraEnv:
+  #   - name: OVERRIDE_VAR
+  #     value: "override-value"
+  #   - name: DYNAMIC_VAR
+  #     value: "{{ .Chart.Version }}"
+
+  # Load all keys from ConfigMap or Secret as env vars
+  envFrom: []
+  # envFrom:
+  #   - configMapRef:
+  #       name: my-config
+  #   - secretRef:
+  #       name: my-secret
+
+  # -- Use envFromSecretName to load all Secret data as env vars
+  envFromSecretName: ""
+  # envFromSecretName: my-secret
+
+  # -- Load env vars from ConfigMaps
+  envFromConfigmaps: []
+  # envFromConfigmaps:
+  #   - configmap1
+  #   - configmap2
+
+  livenessProbe: {}
+  # livenessProbe:
+  #   httpGet:
+  #     path: /health
+  #     port: http
+  #   initialDelaySeconds: 30
+  #   timeoutSeconds: 10
+
+  readinessProbe: {}
+  # readinessProbe:
+  #   httpGet:
+  #     path: /ready
+  #     port: http
+  #   initialDelaySeconds: 10
+  #   timeoutSeconds: 10
+
+  startupProbe: {}
+  # startupProbe:
+  #   httpGet:
+  #     path: /startup
+  #     port: http
+  #   initialDelaySeconds: 0
+  #   failureThreshold: 30
+
+  resources: {}
+  # resources:
+  #   limits:
+  #     cpu: 100m
+  #     memory: 128Mi
+  #   requests:
+  #     cpu: 100m
+  #     memory: 128Mi
+
+  securityContext: {}
+  # securityContext:
+  #   capabilities:
+  #     drop:
+  #       - ALL
+  #   readOnlyRootFilesystem: true
+  #   runAsNonRoot: true
+  #   runAsUser: 1000
+
+  volumeMounts: []
+  # volumeMounts:
+  #   - name: custom-volume
+  #     mountPath: /custom
+
+  volumes: []
+  # volumes:
+  #   - name: custom-volume
+  #     emptyDir: {}
+
+# -- Additional sidecar containers
+additionalContainers: []
+# additionalContainers:
+#   - name: sidecar
+#     image: sidecar:latest
+#     ports:
+#       - containerPort: 9000
+#     env:
+#       - name: SIDECAR_VAR
+#         value: "value"
+
+# =============================================================================
+# POD CONFIGURATION (Shared by Deployment and StatefulSet)
+# =============================================================================
+
+revisionHistoryLimit: 5
+
+restartPolicy: Always
+
+terminationGracePeriodSeconds: 30
+
+# -- Init containers
+initContainers: []
+# initContainers:
+#   - name: init-db
+#     image: busybox:latest
+#     command: ['sh', '-c', 'until nc -z db 5432; do sleep 1; done']
+
+# -- Pod security context
+podSecurityContext: {}
+# podSecurityContext:
+#   fsGroup: 2000
+
+# -- Pod annotations
+podAnnotations: {}
+# podAnnotations:
+#   prometheus.io/scrape: "true"
+
+# -- Pod labels
+podLabels: {}
+# podLabels:
+#   app-tier: "backend"
+
+# =============================================================================
+# SERVICE CONFIGURATION
+# =============================================================================
+
+service:
+  enabled: true
+  type: ClusterIP
+  headless: false
+  annotations: {}
+  # Example annotations for LoadBalancer:
+  # annotations:
+  #   service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+  #   service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+  labels: {}
+
+  # Service ports configuration
+  # port: What other services/ingress use to connect (cluster-facing)
+  # targetPort: Where the container actually listens (should match container.ports[].containerPort)
+  # name: Must match for ingress routing
+  ports:
+    - port: 80           # Cluster-facing port
+      targetPort: 8080   # Container port (must match container.ports[].containerPort)
+      name: http
+  # Multiple ports example:
+  # ports:
+  #   - port: 80
+  #     targetPort: 8080
+  #     name: http
+  #   - port: 9090
+  #     targetPort: 9090
+  #     name: grpc
+  #   - port: 9091
+  #     targetPort: 9091
+  #     name: metrics
+
+# =============================================================================
+# INGRESS & GATEWAY CONFIGURATION
+# =============================================================================
+
+ingress:
+  enabled: false
+  className: ""
+  # Service port name to route traffic to (must match service.ports[].name)
+  servicePortName: http
+  annotations: {}
+  # Hosts support Helm templating
+  hosts: []
+  # hosts:
+  #   - host: app.example.com
+  #     pathType: Prefix
+  #     paths:
+  #       - /
+  #     extraPaths: []  # Advanced custom path configs
+  #   - host: "{{ .Release.Name }}.example.com"  # Templated host
+  #     pathType: Prefix
+  #     paths:
+  #       - /
+  tls: []
+  # tls:
+  #   - secretName: app.example.com-tls
+  #     hosts:
+  #       - app.example.com
+  #       - "{{ .Release.Name }}.example.com"  # Templated host
+
+# Gateway API (next-generation Ingress)
+# Requires Gateway API CRDs: https://gateway-api.sigs.k8s.io/
+gateway:
+  enabled: false
+  annotations: {}
+  servicePort: 80
+  parentRefs: []
+  # parentRefs:
+  #   - name: my-gateway
+  #     namespace: gateway-system
+  # Hostnames support Helm templating
+  hostnames: []
+  # hostnames:
+  #   - app.example.com
+  #   - "{{ .Release.Name }}.example.com"  # Templated hostname
+
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+  # Advanced: Traffic splitting, timeouts, filters
+  # rules:
+  #   - matches:
+  #       - path:
+  #           type: PathPrefix
+  #           value: /api
+  #     timeouts:
+  #       request: 30s
+  #       backendRequest: 25s
+  #     backendRefs:
+  #       - name: myapp-stable
+  #         port: 80
+  #         weight: 90
+  #       - name: myapp-canary
+  #         port: 80
+  #         weight: 10
+  #     filters:
+  #       - type: RequestHeaderModifier
+  #         requestHeaderModifier:
+  #           add:
+  #             - name: X-Custom
+  #               value: value
+
+# =============================================================================
+# STORAGE & CONFIGURATION
+# =============================================================================
+
+# -- Persistence
+# Deployment: Always creates shared PVC (all pods mount same volume)
+# StatefulSet:
+#   - sharedStorage: false (default) → volumeClaimTemplates (separate PVC per pod)
+#   - sharedStorage: true → regular PVC (all pods mount same volume)
+persistence:
+  enabled: false
+  storageClass: ""
+  size: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  volumeName: "data"
+  mountPath: "/data"
+  sharedStorage: false    # StatefulSet only: true = shared PVC, false = volumeClaimTemplates (default)
+
+# =============================================================================
+# SECRETS & CONFIGMAPS
+# =============================================================================
+
+# -- Secrets (stored in Kubernetes Secret)
+# Reference them in container.env with valueFrom.secretKeyRef
+# or mount as files with secretMounts
+# Supports Helm templating - use {{ }} to build dynamic values
+secrets: {}
+# secrets:
+#   API_KEY: "my-secret-key"
+#   DB_PASSWORD: "my-password"
+#   # Dynamic secrets with templating
+#   DATABASE_URL: "postgresql://user:pass@{{ .Release.Name }}-db:5432/{{ .Values.dbName }}"
+#   REDIS_URL: "redis://{{ include "app-starter.fullname" . }}-redis:6379"
+#   API_ENDPOINT: "https://{{ (index .Values.ingress.hosts 0).host }}/api"
+
+configMaps: {}
+# -- ConfigMaps (can be mounted as files or just stored in ConfigMap)
+# Supports Helm templating - use {{ }} to inject values
+# configMaps:
+#   config.yaml:
+#     mountPath: /config/config.yaml  # Optional: omit to store in ConfigMap without mounting
+#     content: |-
+#       app:
+#         name: {{ .Release.Name }}
+#         environment: {{ .Values.environment }}
+#   data.json:
+#     content: |-
+#       {"unmounted": "data"}  # No mountPath = stored in ConfigMap but not mounted to container
+#   nginx.conf:
+#     mountPath: /etc/nginx/nginx.conf
+#     content: |-
+#       server {
+#         listen {{ .Values.container.ports.0.containerPort }};
+#         server_name {{ .Values.ingress.hosts.0.host }};
+#       }
+
+# -- Secret mounts (mount secrets as files instead of env vars)
+secretMounts: {}
+# secretMounts:
+#   my-secret:
+#     secretKey: secretKey
+#     mountPath: /var/secrets/
+#     fileName: secret.json
+
+# =============================================================================
+# RESOURCES & SCHEDULING
+# =============================================================================
+
+nodeSelector: {}
+
+tolerations: []
+# - key: "dedicated"
+#   operator: "Equal"
+#   value: "app"
+#   effect: "NoSchedule"
+
+affinity: {}
+# Pod anti-affinity example (spread pods across nodes):
+# affinity:
+#   podAntiAffinity:
+#     preferredDuringSchedulingIgnoredDuringExecution:
+#       - weight: 100
+#         podAffinityTerm:
+#           labelSelector:
+#             matchExpressions:
+#               - key: app.kubernetes.io/name
+#                 operator: In
+#                 values:
+#                   - app-starter
+#           topologyKey: kubernetes.io/hostname
+#
+# Hard anti-affinity (require pods on different nodes):
+# affinity:
+#   podAntiAffinity:
+#     requiredDuringSchedulingIgnoredDuringExecution:
+#       - labelSelector:
+#           matchExpressions:
+#             - key: app.kubernetes.io/name
+#               operator: In
+#               values:
+#                 - app-starter
+#         topologyKey: kubernetes.io/hostname
+
+# =============================================================================
+# SCALING & AVAILABILITY
+# =============================================================================
+
+# -- Horizontal Pod Autoscaler
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 60
+
+  # Custom metrics (requires Prometheus Adapter)
+  # customMetrics:
+  #   - type: Pods
+  #     pods:
+  #       metric:
+  #         name: "custom_metric"
+  #       target:
+  #         type: AverageValue
+  #         averageValue: "1000"
+  customMetrics: []
+
+  # Scaling behavior
+  # behavior:
+  #   scaleUp:
+  #     stabilizationWindowSeconds: 0
+  #     policies:
+  #       - type: Percent
+  #         value: 100
+  #         periodSeconds: 15
+  #   scaleDown:
+  #     stabilizationWindowSeconds: 300
+  #     policies:
+  #       - type: Percent
+  #         value: 100
+  #         periodSeconds: 15
+  behavior: {}
+
+# -- Vertical Pod Autoscaler
+# Requires VPA CRDs: https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler
+vpa:
+  enabled: false
+  updatePolicy: {}
+  # updatePolicy:
+  #   updateMode: "Auto"  # Off, Initial, Recreate, Auto
+  resourcePolicy: {}
+  # resourcePolicy:
+  #   containerPolicies:
+  #     - containerName: "*"
+  #       minAllowed:
+  #         cpu: 100m
+  #         memory: 50Mi
+  #       maxAllowed:
+  #         cpu: 1
+  #         memory: 500Mi
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: ""
+  maxUnavailable: ""
+  # Set EITHER minAvailable OR maxUnavailable (not both)
+  # minAvailable: 1        # Keep at least 1 pod available
+  # maxUnavailable: 1      # Allow at most 1 pod to be unavailable
+
+# =============================================================================
+# JOBS & CRON
+# =============================================================================
+
+# -- CronJobs
+cronjobs:
+  enabled: false
+  suspend: false
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  schedule: "0 * * * *"
+  restartPolicy: Never
+  activeDeadlineSeconds: ""  # Optional: Set deadline in seconds for job completion
+  cronjob: []
+  # cronjob:
+  #   - name: cleanup
+  #     schedule: "0 2 * * *"
+  #     command: ["/bin/bash"]
+  #     args: ["-c", "/app/cleanup.sh"]
+  #     env:
+  #       - name: CLEANUP_DAYS
+  #         value: "7"
+
+# =============================================================================
+# MONITORING & OBSERVABILITY
+# =============================================================================
+
+serviceMonitor:
+  enabled: false
+  label: ""               # Optional: custom ServiceMonitor name
+  path: ""                # Default: /metrics
+  port: ""                # Default: metrics (must match service.ports[].name)
+  interval: ""            # Optional: scrape interval (e.g., 30s)
+  scrapeTimeout: ""       # Optional: scrape timeout (e.g., 10s)
+
+test:
+  enabled: false
+
+# =============================================================================
+# SECURITY & IDENTITY
+# =============================================================================
+
+serviceAccount:
+  create: false
+  name: ""
+  annotations: {}
+  automountServiceAccountToken: true
+
+# =============================================================================
+# ADVANCED / NON-STANDARD CONFIGURATIONS
+# =============================================================================
+
+# -- Enable automatic pod restart on secrets/configmap changes
+# Requires Reloader operator: https://github.com/stakater/Reloader
+reloader:
+  enabled: false
+  secretOnly: false
+  configMapOnly: false

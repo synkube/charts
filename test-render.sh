@@ -79,42 +79,46 @@ for test_file in "${test_files[@]}"; do
   echo "File: $filename"
   echo "-----------------------------------"
 
-  # Run helm template (skipApiCheck bypasses CRD availability checks for testing)
-  if helm template "test-$test_name" "$CHART_PATH" -f "$test_file" --set global.skipApiCheck=true > "$output_file" 2>&1; then
-    # Count resources
-    resource_count=$(grep "^kind:" "$output_file" 2>/dev/null | wc -l | tr -d '[:space:]' || echo "0")
-
-    if [ "$resource_count" -gt 0 ]; then
-      echo "✓ Helm template: SUCCESS ($resource_count resource(s))"
-      echo "  Resources:"
-      grep "^kind:" "$output_file" | sort | uniq -c | sed 's/^/    /' || true
-
-      # Validate with kubectl if available and cluster is accessible
-      if command -v kubectl &> /dev/null && kubectl cluster-info &> /dev/null 2>&1; then
-        # Run validation with server-side dry-run
-        if kubectl apply --dry-run=server --validate=strict -f "$output_file" &> "$output_file.kubectl" 2>&1; then
-          echo "✓ Kubernetes schema: VALID (server-side validation)"
-        else
-          echo "✗ Kubernetes schema: INVALID"
-          echo "  Validation errors:"
-          cat "$output_file.kubectl" | grep -i "error\|invalid" | head -5 | sed 's/^/    /'
-          ((failed++))
-        fi
+  # Check if cluster is available
+  if command -v kubectl &> /dev/null && kubectl cluster-info &> /dev/null 2>&1; then
+    # With cluster: use helm install --dry-run=server (real capabilities + server-side validation)
+    if helm install "test-$test_name" "$CHART_PATH" -f "$test_file" --dry-run=server > "$output_file" 2>&1; then
+      resource_count=$(grep "^kind:" "$output_file" 2>/dev/null | wc -l | tr -d '[:space:]' || echo "0")
+      if [ "$resource_count" -gt 0 ]; then
+        echo "✓ Helm install --dry-run=server: SUCCESS ($resource_count resource(s))"
+        echo "  Resources:"
+        grep "^kind:" "$output_file" | sort | uniq -c | sed 's/^/    /' || true
+        ((passed++))
       else
-        echo "ℹ️  Kubernetes validation: SKIPPED (no cluster access)"
+        echo "⚠️  WARNING - No Kubernetes resources generated"
+        ((passed++))
       fi
-
-      ((passed++))
     else
-      echo "⚠️  WARNING - No Kubernetes resources generated"
-      echo "  This might be intentional if all resources are disabled"
-      ((passed++))
+      echo "✗ FAILED - Helm install --dry-run=server failed"
+      echo "  Error output:"
+      tail -15 "$output_file" | sed 's/^/    /'
+      ((failed++))
     fi
   else
-    echo "✗ FAILED - Helm template rendering failed"
-    echo "  Error output:"
-    tail -15 "$output_file" | sed 's/^/    /'
-    ((failed++))
+    # Without cluster: use helm template with skipApiCheck to render all resources
+    if helm template "test-$test_name" "$CHART_PATH" -f "$test_file" --set global.skipApiCheck=true > "$output_file" 2>&1; then
+      resource_count=$(grep "^kind:" "$output_file" 2>/dev/null | wc -l | tr -d '[:space:]' || echo "0")
+      if [ "$resource_count" -gt 0 ]; then
+        echo "✓ Helm template: SUCCESS ($resource_count resource(s))"
+        echo "  Resources:"
+        grep "^kind:" "$output_file" | sort | uniq -c | sed 's/^/    /' || true
+        echo "ℹ️  Kubernetes validation: SKIPPED (no cluster access)"
+        ((passed++))
+      else
+        echo "⚠️  WARNING - No Kubernetes resources generated"
+        ((passed++))
+      fi
+    else
+      echo "✗ FAILED - Helm template rendering failed"
+      echo "  Error output:"
+      tail -15 "$output_file" | sed 's/^/    /'
+      ((failed++))
+    fi
   fi
 
   echo

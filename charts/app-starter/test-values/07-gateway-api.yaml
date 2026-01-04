@@ -1,0 +1,57 @@
+# Test 7: Gateway API (next-gen Ingress)
+replicaCount: 2
+
+image:
+  repository: nginx
+  tag: "1.25"
+  pullPolicy: IfNotPresent
+
+container:
+  ports:
+    - name: http
+      containerPort: 8080
+      protocol: TCP
+
+service:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8080
+      name: http
+
+# Use Gateway API instead of Ingress
+gateway:
+  enabled: true
+  servicePort: 80
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  parentRefs:
+    - name: my-gateway
+      namespace: gateway-system
+  hostnames:
+    - app.example.com
+    - www.app.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            add:
+              - name: X-API-Version
+                value: v1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+

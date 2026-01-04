@@ -1,0 +1,65 @@
+# Test case: Different service types and ingress configurations
+# Tests: LoadBalancer service, ingress className, multiple ingress paths
+
+deployment:
+  enabled: true
+
+image:
+  repository: nginx
+  tag: "1.25"
+
+container:
+  ports:
+    - name: http
+      containerPort: 8080
+    - name: admin
+      containerPort: 8081
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# LoadBalancer service (for cloud environments)
+service:
+  type: LoadBalancer
+  labels:
+    service.kubernetes.io/load-balancer-class: "external"
+  ports:
+    - port: 80
+      targetPort: 8080
+      name: http
+    - port: 8081
+      targetPort: 8081
+      name: admin
+
+# Ingress with className and multiple hosts
+ingress:
+  enabled: true
+  className: "nginx"
+  servicePortName: http
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+
+  hosts:
+    - host: app.example.com
+      pathType: Prefix
+      paths:
+        - /
+      extraPaths: []
+
+    - host: admin.example.com
+      pathType: Prefix
+      paths:
+        - /admin
+
+  tls:
+    - secretName: app-example-com-tls
+      hosts:
+        - app.example.com
+    - secretName: admin-example-com-tls
+      hosts:
+        - admin.example.com
+

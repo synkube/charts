@@ -1,0 +1,81 @@
+# Test 8: Advanced Gateway API with traffic splitting and timeouts
+replicaCount: 2
+
+image:
+  repository: myapp/api
+  tag: "v2.0.0"
+  pullPolicy: Always
+
+container:
+  ports:
+    - name: http
+      containerPort: 8080
+      protocol: TCP
+
+service:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8080
+      name: http
+
+gateway:
+  enabled: true
+  servicePort: 80
+  annotations:
+    description: "Advanced Gateway routing with canary and timeouts"
+  parentRefs:
+    - name: production-gateway
+      namespace: gateway-system
+  hostnames:
+    - api.example.com
+  rules:
+    # Rule 1: Main API with timeout and canary split
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      timeouts:
+        request: 30s
+        backendRequest: 25s
+      backendRefs:
+        - name: myapp-stable
+          port: 80
+          weight: 95
+        - name: myapp-canary
+          port: 80
+          weight: 5
+
+    # Rule 2: Admin panel (no traffic split, different timeout)
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /admin
+      timeouts:
+        request: 60s
+        backendRequest: 55s
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            add:
+              - name: X-Admin-Request
+                value: "true"
+      # Uses default backend (this chart's service)
+
+    # Rule 3: Health checks (fast timeout)
+    - matches:
+        - path:
+            type: Exact
+            value: /health
+      timeouts:
+        request: 5s
+        backendRequest: 3s
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+

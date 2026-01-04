@@ -1,0 +1,23 @@
+{{- if and .Values.persistence.enabled (or (and .Values.deployment.enabled (not .Values.statefulSet.enabled)) (and .Values.statefulSet.enabled .Values.persistence.sharedStorage)) -}}
+{{- /* PVC is created for:
+  1. Deployment (always uses shared PVC)
+  2. StatefulSet with sharedStorage: true (shared PVC)
+  3. StatefulSet with sharedStorage: false uses volumeClaimTemplates (no PVC here)
+*/ -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "app-starter.fullname" . }}
+  labels:
+{{ include "app-starter.labels" . | indent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.persistence.accessModes | nindent 4 }}
+  {{- if .Values.persistence.storageClass }}
+  storageClassName: {{ .Values.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size }}
+{{- end -}}
+

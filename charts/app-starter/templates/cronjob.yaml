@@ -1,0 +1,114 @@
+{{- if .Values.cronjobs.enabled }}
+{{- $fullname := include "app-starter.fullname" . -}}
+{{- $labels := include "app-starter.labels" . -}}
+{{- $serviceaccountname := include "app-starter.serviceAccountName" . -}}
+{{- range $cronjob := .Values.cronjobs.cronjob }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: "{{ $.Release.Name  }}-{{ $cronjob.name }}"
+  labels:
+{{ $labels | indent 4 }}
+spec:
+  {{- if $cronjob.concurrencyPolicy }}
+  concurrencyPolicy: {{ $cronjob.concurrencyPolicy }}
+  {{- else }}
+  concurrencyPolicy: {{ $.Values.cronjobs.concurrencyPolicy }}
+  {{- end }}
+  {{- if $cronjob.schedule }}
+  schedule: {{ $cronjob.schedule | quote }}
+  {{- else }}
+  schedule: {{ $.Values.cronjobs.schedule | quote }}
+  {{- end }}
+  {{- if $cronjob.suspend }}
+  suspend: {{ $cronjob.suspend }}
+  {{- else }}
+  suspend: {{ $.Values.cronjobs.suspend }}
+  {{- end }}
+  {{- if $cronjob.successfulJobsHistoryLimit }}
+  successfulJobsHistoryLimit: {{ $cronjob.successfulJobsHistoryLimit }}
+  {{- else }}
+  successfulJobsHistoryLimit: {{ $.Values.cronjobs.successfulJobsHistoryLimit }}
+  {{- end }}
+  {{- if $cronjob.failedJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ $cronjob.failedJobsHistoryLimit }}
+  {{- else }}
+  failedJobsHistoryLimit: {{ $.Values.cronjobs.failedJobsHistoryLimit }}
+  {{- end }}
+  jobTemplate:
+    spec:
+      {{- if $cronjob.activeDeadlineSeconds }}
+      activeDeadlineSeconds: {{ $cronjob.activeDeadlineSeconds }}
+      {{- else if $.Values.cronjobs.activeDeadlineSeconds }}
+      activeDeadlineSeconds: {{ $.Values.cronjobs.activeDeadlineSeconds }}
+      {{- end }}
+      template:
+        metadata:
+          labels:
+            app: {{ $.Release.Name  }}
+            cron: {{ $cronjob.name }}
+        spec:
+          serviceAccountName: {{ $serviceaccountname }}
+          {{- with $.Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if $cronjob.restartPolicy }}
+          restartPolicy: {{ $cronjob.restartPolicy }}
+          {{- else }}
+          restartPolicy: {{ $.Values.cronjobs.restartPolicy }}
+          {{- end }}
+          securityContext:
+            {{- toYaml $.Values.podSecurityContext | nindent 12 }}
+          containers:
+            - name: {{ $cronjob.name }}
+              {{- if $cronjob.image }}
+              image: "{{ $cronjob.image.repository }}:{{ $cronjob.image.tag }}"
+              imagePullPolicy: {{ $cronjob.image.pullPolicy }}
+              {{- else if $.Values.image }}
+              image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag }}"
+              imagePullPolicy: {{ $.Values.image.pullPolicy }}
+              {{- end }}
+              {{- if $cronjob.env }}
+              env:
+                {{- toYaml $cronjob.env | nindent 16 }}
+              {{- end }}
+              {{- with $cronjob.envFrom }}
+              envFrom:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+              {{- if $cronjob.command }}
+              command:
+                {{- toYaml $cronjob.command | nindent 16 }}
+              {{- end }}
+              {{- with $cronjob.args }}
+              args:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+              {{- with $cronjob.resources }}
+              resources:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+              {{- with $cronjob.volumeMounts }}
+              volumeMounts:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+          {{- with $cronjob.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $cronjob.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $cronjob.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $cronjob.volumes }}
+          volumes:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+  {{- end }}
+{{ end }}

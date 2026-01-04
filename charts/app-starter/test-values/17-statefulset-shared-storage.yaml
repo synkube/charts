@@ -1,0 +1,50 @@
+# Test StatefulSet with shared storage (all pods mount same PVC)
+# This is different from the default volumeClaimTemplates pattern
+
+fullnameOverride: "sts-shared"
+
+# Disable deployment (required for StatefulSet)
+deployment:
+  enabled: false
+
+# StatefulSet with shared storage
+statefulSet:
+  enabled: true
+  replicas: 3
+  serviceName: "sts-shared"
+
+# Container configuration
+container:
+  ports:
+    - name: http
+      containerPort: 8080
+      protocol: TCP
+
+# Shared persistence - all pods mount the same PVC
+# This is useful for shared uploads, logs, or configuration
+persistence:
+  enabled: true
+  sharedStorage: true        # ← Key difference: uses regular PVC, not volumeClaimTemplates
+  size: 5Gi
+  storageClass: "standard"
+  accessModes:
+    - ReadWriteMany          # Important: Use RWX for shared storage in StatefulSet
+  volumeName: "shared-data"
+  mountPath: "/shared"
+
+# Service
+service:
+  enabled: true
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+
+# Image
+image:
+  repository: nginx
+  tag: "1.21"
+  pullPolicy: IfNotPresent
+
