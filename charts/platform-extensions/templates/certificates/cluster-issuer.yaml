@@ -1,0 +1,82 @@
+{{- range $name, $issuer := .Values.clusterIssuers }}
+{{- if include "common.hasApi" (list "cert-manager.io/v1/ClusterIssuer" $) }}
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "platform-extensions.labels" $ | nindent 4 }}
+  {{- with $issuer.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if $issuer.acme }}
+  acme:
+    server: {{ $issuer.acme.server | quote }}
+    email: {{ $issuer.acme.email | quote }}
+    privateKeySecretRef:
+      name: {{ $issuer.acme.privateKeySecretRef.name }}
+    {{- if $issuer.acme.solvers }}
+    solvers:
+      {{- range $issuer.acme.solvers }}
+      {{- if .dns01 }}
+      - dns01:
+          {{- if .dns01.cloudflare }}
+          cloudflare:
+            email: {{ .dns01.cloudflare.email | quote }}
+            {{- if .dns01.cloudflare.apiTokenSecretRef }}
+            apiTokenSecretRef:
+              name: {{ .dns01.cloudflare.apiTokenSecretRef.name }}
+              key: {{ .dns01.cloudflare.apiTokenSecretRef.key }}
+            {{- end }}
+            {{- if .dns01.cloudflare.apiKeySecretRef }}
+            apiKeySecretRef:
+              name: {{ .dns01.cloudflare.apiKeySecretRef.name }}
+              key: {{ .dns01.cloudflare.apiKeySecretRef.key }}
+            {{- end }}
+          {{- end }}
+          {{- if .dns01.route53 }}
+          route53:
+            region: {{ .dns01.route53.region }}
+            {{- if .dns01.route53.accessKeyID }}
+            accessKeyID: {{ .dns01.route53.accessKeyID }}
+            {{- end }}
+            {{- if .dns01.route53.secretAccessKeySecretRef }}
+            secretAccessKeySecretRef:
+              name: {{ .dns01.route53.secretAccessKeySecretRef.name }}
+              key: {{ .dns01.route53.secretAccessKeySecretRef.key }}
+            {{- end }}
+          {{- end }}
+        {{- if .selector }}
+        selector:
+          {{- if .selector.dnsZones }}
+          dnsZones:
+            {{- range .selector.dnsZones }}
+            - {{ . | quote }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+      {{- if .http01 }}
+      - http01:
+          {{- if .http01.ingress }}
+          ingress:
+            {{- if .http01.ingress.class }}
+            class: {{ .http01.ingress.class }}
+            {{- end }}
+          {{- end }}
+      {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if $issuer.ca }}
+  ca:
+    secretName: {{ $issuer.ca.secretName }}
+  {{- end }}
+  {{- if $issuer.selfSigned }}
+  selfSigned: {}
+  {{- end }}
+{{- end }}
+{{- end }}

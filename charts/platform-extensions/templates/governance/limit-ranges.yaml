@@ -1,0 +1,53 @@
+{{- if .Values.limitRanges }}
+{{- range $name, $lr := .Values.limitRanges }}
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: {{ $name }}
+  {{- if $lr.namespace }}
+  namespace: {{ $lr.namespace }}
+  {{- end }}
+  labels:
+    {{- include "platform-extensions.labels" $ | nindent 4 }}
+  {{- with $lr.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  limits:
+    {{- range $lr.limits }}
+    - type: {{ .type }}
+      {{- if .default }}
+      default:
+        {{- range $resource, $value := .default }}
+        {{ $resource }}: {{ $value }}
+        {{- end }}
+      {{- end }}
+      {{- if .defaultRequest }}
+      defaultRequest:
+        {{- range $resource, $value := .defaultRequest }}
+        {{ $resource }}: {{ $value }}
+        {{- end }}
+      {{- end }}
+      {{- if .max }}
+      max:
+        {{- range $resource, $value := .max }}
+        {{ $resource }}: {{ $value }}
+        {{- end }}
+      {{- end }}
+      {{- if .min }}
+      min:
+        {{- range $resource, $value := .min }}
+        {{ $resource }}: {{ $value }}
+        {{- end }}
+      {{- end }}
+      {{- if .maxLimitRequestRatio }}
+      maxLimitRequestRatio:
+        {{- range $resource, $value := .maxLimitRequestRatio }}
+        {{ $resource }}: {{ $value }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,97 @@
+# Test 1: Cluster Storage Configuration
+# Demonstrates: StorageClasses, VolumeSnapshotClasses, PriorityClasses
+
+# Storage Classes for different performance tiers
+storageClasses:
+  fast-ssd:
+    provisioner: pd.csi.storage.gke.io
+    parameters:
+      type: pd-ssd
+      replication-type: regional-pd
+      zones: us-central1-a,us-central1-b,us-central1-c
+    reclaimPolicy: Delete
+    allowVolumeExpansion: true
+    volumeBindingMode: WaitForFirstConsumer
+    annotations:
+      storageclass.kubernetes.io/is-default-class: "false"
+
+  standard-retain:
+    provisioner: pd.csi.storage.gke.io
+    parameters:
+      type: pd-balanced
+      replication-type: none
+    reclaimPolicy: Retain
+    allowVolumeExpansion: true
+    volumeBindingMode: Immediate
+    annotations:
+      storageclass.kubernetes.io/description: "Standard balanced storage with retain policy"
+
+  nfs-client:
+    provisioner: cluster.local/nfs-client-provisioner
+    parameters:
+      server: nfs-server.storage.svc.cluster.local
+      path: /exports
+      archiveOnDelete: "true"
+    reclaimPolicy: Delete
+    allowVolumeExpansion: false
+    mountOptions:
+      - hard
+      - nfsvers=4.1
+      - noatime
+
+# Volume Snapshot Classes for backup/restore
+volumeSnapshotClasses:
+  standard:
+    driver: pd.csi.storage.gke.io
+    deletionPolicy: Delete
+    parameters:
+      storage-locations: us-central1
+      snapshot-type: standard
+    annotations:
+      snapshot.storage.kubernetes.io/is-default-class: "true"
+
+  long-term-retain:
+    driver: pd.csi.storage.gke.io
+    deletionPolicy: Retain
+    parameters:
+      storage-locations: us-central1,us-east1
+      snapshot-type: archive
+      retention-days: "365"
+    annotations:
+      snapshot.storage.kubernetes.io/description: "Long-term retention snapshots"
+
+# Priority Classes for workload scheduling
+priorityClasses:
+  platform-critical:
+    value: 1000000000
+    globalDefault: false
+    description: "System critical workloads that must never be evicted"
+    preemptionPolicy: PreemptLowerPriority
+    annotations:
+      scheduler.alpha.kubernetes.io/critical-pod: "true"
+
+  high-priority:
+    value: 1000
+    globalDefault: false
+    description: "High priority application workloads"
+    preemptionPolicy: PreemptLowerPriority
+
+  normal-priority:
+    value: 500
+    globalDefault: true
+    description: "Normal priority workloads (default)"
+    preemptionPolicy: PreemptLowerPriority
+
+  low-priority:
+    value: 100
+    globalDefault: false
+    description: "Low priority batch workloads"
+    preemptionPolicy: Never
+
+  best-effort:
+    value: -100
+    globalDefault: false
+    description: "Best effort workloads that can be preempted anytime"
+    preemptionPolicy: Never
+    annotations:
+      scheduler.alpha.kubernetes.io/tolerations: '[{"key":"preemptible","operator":"Equal","value":"true","effect":"NoSchedule"}]'

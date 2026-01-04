@@ -1,0 +1,39 @@
+{{- if .Values.storageClasses }}
+{{- range $name, $sc := .Values.storageClasses }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "platform-extensions.labels" $ | nindent 4 }}
+  {{- with $sc.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+provisioner: {{ $sc.provisioner }}
+{{- if $sc.parameters }}
+parameters:
+  {{- range $key, $value := $sc.parameters }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+{{- end }}
+reclaimPolicy: {{ $sc.reclaimPolicy | default "Delete" }}
+{{- if $sc.allowVolumeExpansion }}
+allowVolumeExpansion: {{ $sc.allowVolumeExpansion }}
+{{- end }}
+{{- if $sc.volumeBindingMode }}
+volumeBindingMode: {{ $sc.volumeBindingMode }}
+{{- end }}
+{{- if $sc.allowedTopologies }}
+allowedTopologies:
+  {{- toYaml $sc.allowedTopologies | nindent 2 }}
+{{- end }}
+{{- if $sc.mountOptions }}
+mountOptions:
+  {{- range $sc.mountOptions }}
+  - {{ . }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

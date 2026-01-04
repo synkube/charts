@@ -1,0 +1,300 @@
+# Test 5: Full-featured application extensions
+# Demonstrates: Complete integration of all app-extension resources
+
+# Test values for registry authentication
+registry:
+  username: "test-user"
+  password: "test-password"
+
+# Multiple secrets with different types and sources
+secrets:
+  myapp-config:
+    type: Opaque
+    annotations:
+      replicator.v1.mittwald.de/replicate-to: "myapp-*"
+      kubernetes.io/description: "Application configuration secrets"
+    data:
+      database-host: "{{ .Release.Name }}-postgresql"
+      redis-url: "redis://{{ .Release.Name }}-redis:6379/0"
+    stringData:
+      app-config.yaml: |
+        database:
+          host: {{ .Release.Name }}-postgresql
+          port: 5432
+        redis:
+          host: {{ .Release.Name }}-redis
+          port: 6379
+        features:
+          monitoring: true
+          tracing: {{ .Values.tracing | default false }}
+
+  docker-registry:
+    type: kubernetes.io/dockerconfigjson
+    annotations:
+      replicator.v1.mittwald.de/replicate-to: "*"
+    stringData:
+      .dockerconfigjson: |
+        {
+          "auths": {
+            "registry.{{ .Release.Name }}.com": {
+              "username": "{{ .Values.registry.username }}",
+              "password": "{{ .Values.registry.password }}",
+              "auth": "{{ printf "%s:%s" .Values.registry.username .Values.registry.password | b64enc }}"
+            }
+          }
+        }
+
+# External secrets from multiple stores
+externalSecrets:
+  database-credentials:
+    refreshInterval: "15m"
+    secretStoreRef:
+      name: infisical-platform
+      kind: ClusterSecretStore
+    target:
+      name: myapp-database-secret
+      creationPolicy: Owner
+      template:
+        type: Opaque
+        metadata:
+          labels:
+            app: myapp
+            component: database
+            managed-by: external-secrets
+    data:
+      - secretKey: username
+        remoteRef:
+          key: myapp/prod/database
+          property: username
+      - secretKey: password
+        remoteRef:
+          key: myapp/prod/database
+          property: password
+
+  api-keys:
+    refreshInterval: "1h"
+    secretStoreRef:
+      name: vault-backend
+      kind: SecretStore
+    target:
+      name: myapp-api-keys
+      creationPolicy: Owner
+    dataFrom:
+      - extract:
+          key: myapp/prod/api-keys
+
+# Namespace SecretStore configuration
+secretStores:
+  vault-backend:
+    provider:
+      vault:
+        server: "https://vault.company.com"
+        path: "secret"
+        version: "v2"
+        auth:
+          kubernetes:
+            mountPath: "kubernetes"
+            role: "myapp-prod-role"
+            serviceAccountRef:
+              name: myapp-vault-sa
+
+# Sealed secrets for sensitive data
+sealedSecrets:
+  myapp-oauth-secrets:
+    encryptedData:
+      client-id: AgBy3i4OJSWK+PiTySYZZA9rO43cGDEQAx...
+      client-secret: AgAKAoiQm94A7/ZLdClVp5xSz7GQcK1Y8J...
+      signing-key: AgCCOEf8+RmuQjPzm3qAHzGr4V8bH2n9dA...
+    template:
+      metadata:
+        name: myapp-oauth-secrets
+        labels:
+          app: myapp
+          component: auth
+      type: Opaque
+
+# Comprehensive ConfigMaps
+configMaps:
+  application-config:
+    annotations:
+      reloader.stakater.com/match: "true"
+    data:
+      nginx.conf:
+        content: |
+          upstream backend {
+            server {{ .Release.Name }}-backend:8080;
+          }
+
+          server {
+            listen 80;
+            server_name {{ .Release.Name }}.example.com;
+
+            location / {
+              proxy_pass http://backend;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            }
+
+            location /health {
+              access_log off;
+              return 200 "healthy\n";
+            }
+          }
+
+      logging.yaml:
+        content: |
+          version: 1
+          disable_existing_loggers: false
+          formatters:
+            standard:
+              format: '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+          handlers:
+            default:
+              level: INFO
+              formatter: standard
+              class: logging.StreamHandler
+              stream: ext://sys.stdout
+          loggers:
+            {{ .Release.Name }}:
+              level: {{ .Values.logLevel | default "INFO" }}
+              handlers: [default]
+              propagate: false
+          root:
+            level: INFO
+            handlers: [default]
+
+# Multiple service accounts for different components
+serviceAccounts:
+  myapp-backend:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/myapp-backend-role
+      vault.hashicorp.com/agent-inject: "true"
+      vault.hashicorp.com/role: "myapp-backend"
+    imagePullSecrets:
+      - docker-registry
+    automountServiceAccountToken: true
+
+  myapp-worker:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/myapp-worker-role
+    imagePullSecrets:
+      - docker-registry
+    automountServiceAccountToken: true
+
+  myapp-vault-sa:
+    annotations:
+      vault.hashicorp.com/agent-inject: "false"
+    automountServiceAccountToken: true
+
+# Comprehensive RBAC setup
+roles:
+  myapp-backend:
+    rules:
+      - apiGroups: [""]
+        resources: ["secrets", "configmaps"]
+        verbs: ["get", "list"]
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: ["apps"]
+        resources: ["deployments"]
+        verbs: ["get", "list", "watch", "patch"]
+
+  myapp-worker:
+    rules:
+      - apiGroups: [""]
+        resources: ["secrets"]
+        resourceNames: ["myapp-worker-secret"]
+        verbs: ["get"]
+      - apiGroups: ["batch"]
+        resources: ["jobs"]
+        verbs: ["get", "list", "create", "delete"]
+
+  vault-auth:
+    rules:
+      - apiGroups: [""]
+        resources: ["serviceaccounts/token"]
+        verbs: ["create"]
+
+roleBindings:
+  myapp-backend:
+    subjects:
+      - kind: ServiceAccount
+        name: myapp-backend
+    roleRef:
+      kind: Role
+      name: myapp-backend
+
+  myapp-worker:
+    subjects:
+      - kind: ServiceAccount
+        name: myapp-worker
+    roleRef:
+      kind: Role
+      name: myapp-worker
+
+  vault-auth:
+    subjects:
+      - kind: ServiceAccount
+        name: myapp-vault-sa
+    roleRef:
+      kind: Role
+      name: vault-auth
+
+# Network policies for secure communication
+networkPolicies:
+  default-deny:
+    podSelector: {}
+    policyTypes:
+      - Ingress
+      - Egress
+
+  backend-access:
+    podSelector:
+      matchLabels:
+        app: myapp
+        component: backend
+    policyTypes:
+      - Ingress
+      - Egress
+    ingress:
+      - from:
+          - podSelector:
+              matchLabels:
+                app: myapp
+                component: frontend
+        ports:
+          - protocol: TCP
+            port: 8080
+    egress:
+      - to:
+          - podSelector:
+              matchLabels:
+                app: myapp
+                component: database
+        ports:
+          - protocol: TCP
+            port: 5432
+      - to: []
+        ports:
+          - protocol: UDP
+            port: 53
+          - protocol: TCP
+            port: 443
+
+# Storage for the application
+persistentVolumeClaims:
+  myapp-data:
+    accessModes:
+      - ReadWriteOnce
+    size: 20Gi
+    storageClassName: fast-ssd
+    annotations:
+      volume.beta.kubernetes.io/storage-class: fast-ssd
+
+  myapp-cache:
+    accessModes:
+      - ReadWriteMany
+    size: 10Gi
+    storageClassName: nfs-client

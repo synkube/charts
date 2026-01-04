@@ -1,0 +1,33 @@
+{{- if .Values.persistentVolumeClaims }}
+{{- range $name, $pvc := .Values.persistentVolumeClaims }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "app-extensions.labels" $ | nindent 4 }}
+  {{- with $pvc.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    {{- range $pvc.accessModes }}
+    - {{ . }}
+    {{- end }}
+  {{- if $pvc.storageClassName }}
+  storageClassName: {{ $pvc.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $pvc.size }}
+  {{- if $pvc.selector }}
+  selector:
+    {{- toYaml $pvc.selector | nindent 4 }}
+  {{- end }}
+  {{- if $pvc.volumeMode }}
+  volumeMode: {{ $pvc.volumeMode }}
+  {{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,278 @@
+# Default values for platform-extensions
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Chart metadata
+nameOverride: ""
+fullnameOverride: ""
+
+# Cluster Secret Stores - Cluster-wide secret providers
+clusterSecretStores: {}
+  # infisical-platform:
+  #   provider:
+  #     infisical:
+  #       auth:
+  #         universalAuthCredentials:
+  #           secretsPath: "/k8s/platform"
+  #           clientId:
+  #             secretRef:
+  #               secretName: infisical-auth
+  #               key: clientId
+  #           clientSecret:
+  #             secretRef:
+  #               secretName: infisical-auth
+  #               key: clientSecret
+  #       hostAPI: "https://app.infisical.com/api"
+  #   conditions:
+  #     - namespaceSelector:
+  #         matchLabels:
+  #           platform-secrets: "enabled"
+
+# Cluster Roles - Cluster-wide permissions
+clusterRoles: {}
+  # platform-operator:
+  #   rules:
+  #     - apiGroups: [""]
+  #       resources: ["secrets", "configmaps", "namespaces"]
+  #       verbs: ["get", "list", "watch", "create", "update", "patch"]
+  #     - apiGroups: ["external-secrets.io"]
+  #       resources: ["externalsecrets", "secretstores"]
+  #       verbs: ["*"]
+  #   aggregationRule:
+  #     clusterRoleSelectors:
+  #       - matchLabels:
+  #           rbac.platform/aggregate-to-operator: "true"
+
+# Cluster Role Bindings - Cluster-wide permission assignments
+clusterRoleBindings: {}
+  # platform-operators:
+  #   subjects:
+  #     - kind: Group
+  #       name: platform-operators
+  #       apiGroup: rbac.authorization.k8s.io
+  #     - kind: ServiceAccount
+  #       name: platform-operator
+  #       namespace: platform-system
+  #   roleRef:
+  #     kind: ClusterRole
+  #     name: platform-operator
+  #     apiGroup: rbac.authorization.k8s.io
+
+# Storage Classes - Cluster-wide storage configuration
+storageClasses: {}
+  # fast-ssd:
+  #   provisioner: pd.csi.storage.gke.io
+  #   parameters:
+  #     type: pd-ssd
+  #     replication-type: regional-pd
+  #   reclaimPolicy: Delete
+  #   allowVolumeExpansion: true
+  #   volumeBindingMode: WaitForFirstConsumer
+  # standard-retain:
+  #   provisioner: pd.csi.storage.gke.io
+  #   parameters:
+  #     type: pd-balanced
+  #   reclaimPolicy: Retain
+  #   allowVolumeExpansion: true
+  #   volumeBindingMode: Immediate
+
+# Volume Snapshot Classes - Backup/restore configuration
+volumeSnapshotClasses: {}
+  # standard:
+  #   driver: pd.csi.storage.gke.io
+  #   deletionPolicy: Delete
+  #   parameters:
+  #     storage-locations: us-central1
+  # retain:
+  #   driver: pd.csi.storage.gke.io
+  #   deletionPolicy: Retain
+  #   parameters:
+  #     storage-locations: us-central1,us-east1
+
+# Priority Classes - Workload scheduling priorities
+priorityClasses: {}
+  # system-critical:
+  #   value: 2000000000
+  #   globalDefault: false
+  #   description: "System critical workloads"
+  #   preemptionPolicy: PreemptLowerPriority
+  # high-priority:
+  #   value: 1000
+  #   globalDefault: false
+  #   description: "High priority application workloads"
+  # low-priority:
+  #   value: 100
+  #   globalDefault: false
+  #   description: "Low priority batch workloads"
+  #   preemptionPolicy: Never
+
+# Resource Quotas - Namespace resource limits (admin-imposed)
+resourceQuotas: {}
+  # production-quota:
+  #   namespace: production
+  #   hard:
+  #     requests.cpu: "100"
+  #     requests.memory: "200Gi"
+  #     limits.cpu: "200"
+  #     limits.memory: "400Gi"
+  #     persistentvolumeclaims: "50"
+  #     pods: "100"
+  #     services: "20"
+  #   scopes:
+  #     - NotTerminating
+  # development-quota:
+  #   namespace: development
+  #   hard:
+  #     requests.cpu: "10"
+  #     requests.memory: "20Gi"
+  #     limits.cpu: "20"
+  #     limits.memory: "40Gi"
+
+# Limit Ranges - Default resource constraints (admin-imposed)
+limitRanges: {}
+  # production-limits:
+  #   namespace: production
+  #   limits:
+  #     - type: Container
+  #       default:
+  #         cpu: "500m"
+  #         memory: "512Mi"
+  #       defaultRequest:
+  #         cpu: "100m"
+  #         memory: "128Mi"
+  #       max:
+  #         cpu: "4"
+  #         memory: "8Gi"
+  #       min:
+  #         cpu: "50m"
+  #         memory: "64Mi"
+  #     - type: PersistentVolumeClaim
+  #       max:
+  #         storage: "100Gi"
+  #       min:
+  #         storage: "1Gi"
+
+# Network Policies - Platform-wide security policies
+networkPolicies: {}
+  # default-deny-all:
+  #   namespace: production
+  #   podSelector: {}
+  #   policyTypes:
+  #     - Ingress
+  #     - Egress
+  #   # No ingress/egress rules = deny all
+  # allow-dns:
+  #   namespace: production
+  #   podSelector: {}
+  #   policyTypes:
+  #     - Egress
+  #   egress:
+  #     - to: []
+  #       ports:
+  #         - protocol: UDP
+  #           port: 53
+  #         - protocol: TCP
+  #           port: 53
+
+# Ingress Classes - Ingress controller definitions
+ingressClasses: {}
+  # nginx-public:
+  #   controller: k8s.io/ingress-nginx
+  #   parameters:
+  #     apiGroup: k8s.io
+  #     kind: IngressParameters
+  #     name: nginx-public-params
+  # nginx-internal:
+  #   controller: k8s.io/ingress-nginx
+  #   parameters:
+  #     apiGroup: k8s.io
+  #     kind: IngressParameters
+  #     name: nginx-internal-params
+
+# Gateway Classes - Gateway controller definitions
+gatewayClasses: {}
+  # istio:
+  #   controllerName: istiod.istio-system/gateway-controller
+  #   description: "Istio service mesh gateway"
+  # nginx:
+  #   controllerName: gateway.nginx.org/nginx-gateway-controller
+  #   description: "NGINX Gateway Fabric"
+
+# Gateways - Gateway API gateways
+gateways: {}
+  # public-gateway:
+  #   namespace: gateway-system
+  #   gatewayClassName: istio
+  #   listeners:
+  #     - name: http
+  #       hostname: "*.example.com"
+  #       port: 80
+  #       protocol: HTTP
+  #       allowedRoutes:
+  #         namespaces:
+  #           from: All
+  #     - name: https
+  #       hostname: "*.example.com"
+  #       port: 443
+  #       protocol: HTTPS
+  #       tls:
+  #         mode: Terminate
+  #         certificateRefs:
+  #           - name: example-com-tls
+  #       allowedRoutes:
+  #         namespaces:
+  #           from: All
+
+# Cluster Issuers - Certificate authorities for platform certificates
+clusterIssuers: {}
+  # letsencrypt-prod:
+  #   annotations:
+  #     cert-manager.io/issuer-type: "acme"
+  #   acme:
+  #     server: "https://acme-v02.api.letsencrypt.org/directory"
+  #     email: "platform@company.com"
+  #     privateKeySecretRef:
+  #       name: letsencrypt-prod-key
+  #     solvers:
+  #       - dns01:
+  #           cloudflare:
+  #             email: "platform@company.com"
+  #             apiTokenSecretRef:
+  #               name: cloudflare-api-token
+  #               key: api-token
+  #         selector:
+  #           dnsZones:
+  #             - "company.com"
+  #             - "*.company.com"
+  # self-signed-issuer:
+  #   selfSigned: {}
+  # internal-ca:
+  #   ca:
+  #     secretName: internal-ca-key-pair
+
+# Certificates - Platform TLS certificates
+certificates: {}
+  # wildcard-example-com:
+  #   namespace: gateway-system
+  #   secretName: example-com-tls
+  #   issuerRef:
+  #     name: letsencrypt-prod
+  #     kind: ClusterIssuer
+  #   commonName: "*.example.com"
+  #   dnsNames:
+  #     - "*.example.com"
+  #     - example.com
+  #   duration: "2160h" # 90 days
+  #   renewBefore: "360h" # 15 days
+  # platform-ca:
+  #   namespace: cert-manager
+  #   secretName: platform-ca-tls
+  #   issuerRef:
+  #     name: self-signed-issuer
+  #     kind: ClusterIssuer
+  #   commonName: "Platform Internal CA"
+  #   isCA: true
+  #   duration: "43800h" # 5 years
+  #   privateKey:
+  #     algorithm: RSA
+  #     size: 4096

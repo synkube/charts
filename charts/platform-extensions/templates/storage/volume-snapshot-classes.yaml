@@ -1,0 +1,23 @@
+{{- if .Values.volumeSnapshotClasses }}
+{{- range $name, $vsc := .Values.volumeSnapshotClasses }}
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "platform-extensions.labels" $ | nindent 4 }}
+  {{- with $vsc.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+driver: {{ $vsc.driver }}
+deletionPolicy: {{ $vsc.deletionPolicy | default "Delete" }}
+{{- if $vsc.parameters }}
+parameters:
+  {{- range $key, $value := $vsc.parameters }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

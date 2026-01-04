@@ -1,0 +1,21 @@
+{{- if .Values.ingressClasses }}
+{{- range $name, $ic := .Values.ingressClasses }}
+---
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "platform-extensions.labels" $ | nindent 4 }}
+  {{- with $ic.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  controller: {{ $ic.controller }}
+  {{- if $ic.parameters }}
+  parameters:
+    {{- toYaml $ic.parameters | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}

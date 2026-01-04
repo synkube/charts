@@ -1,0 +1,36 @@
+{{- if .Values.roles }}
+{{- range $name, $role := .Values.roles }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "app-extensions.labels" $ | nindent 4 }}
+  {{- with $role.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+rules:
+{{- range $role.rules }}
+- apiGroups:
+  {{- range .apiGroups }}
+    - {{ . | quote }}
+  {{- end }}
+  resources:
+  {{- range .resources }}
+    - {{ . | quote }}
+  {{- end }}
+  verbs:
+  {{- range .verbs }}
+    - {{ . | quote }}
+  {{- end }}
+  {{- if .resourceNames }}
+  resourceNames:
+  {{- range .resourceNames }}
+    - {{ . | quote }}
+  {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

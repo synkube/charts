@@ -1,0 +1,30 @@
+{{- if .Values.roleBindings }}
+{{- range $name, $binding := .Values.roleBindings }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "app-extensions.labels" $ | nindent 4 }}
+  {{- with $binding.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+subjects:
+{{- range $binding.subjects }}
+- kind: {{ .kind }}
+  name: {{ .name }}
+  {{- if .namespace }}
+  namespace: {{ .namespace }}
+  {{- end }}
+  {{- if .apiGroup }}
+  apiGroup: {{ .apiGroup }}
+  {{- end }}
+{{- end }}
+roleRef:
+  kind: {{ $binding.roleRef.kind | default "Role" }}
+  name: {{ $binding.roleRef.name }}
+  apiGroup: {{ $binding.roleRef.apiGroup | default "rbac.authorization.k8s.io" }}
+{{- end }}
+{{- end }}

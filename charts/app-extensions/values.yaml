@@ -1,0 +1,152 @@
+# Default values for app-extensions
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Chart metadata
+nameOverride: ""
+fullnameOverride: ""
+
+# Secrets - Regular Kubernetes secrets with templating support
+secrets: {}
+  # myapp-db-secret:
+  #   type: Opaque
+  #   annotations:
+  #     replicator.v1.mittwald.de/replicate-to: "*"
+  #   data:
+  #     username: "{{ .Values.database.username | b64enc }}"
+  #     password: "{{ .Values.database.password | b64enc }}"
+  #   stringData:
+  #     config.yaml: |
+  #       host: "{{ .Release.Name }}-db"
+  #       port: 5432
+
+# External Secrets - Sync secrets from external providers
+externalSecrets: {}
+  # myapp-secrets:
+  #   refreshInterval: "1h"
+  #   secretStoreRef:
+  #     name: infisical-platform
+  #     kind: ClusterSecretStore
+  #   target:
+  #     name: myapp-secrets
+  #     creationPolicy: Owner
+  #   data:
+  #     - secretKey: database-password
+  #       remoteRef:
+  #         key: myapp/database
+  #         property: password
+  #     - secretKey: api-key
+  #       remoteRef:
+  #         key: myapp/api
+  #         property: key
+
+# Secret Stores - Namespace-scoped secret providers
+secretStores: {}
+  # vault-backend:
+  #   provider:
+  #     vault:
+  #       server: "https://vault.company.com"
+  #       path: "secret"
+  #       version: "v2"
+  #       auth:
+  #         kubernetes:
+  #           mountPath: "kubernetes"
+  #           role: "myapp-role"
+  #           serviceAccountRef:
+  #             name: myapp-sa
+
+# Sealed Secrets - Encrypted secrets
+sealedSecrets: {}
+  # myapp-sealed:
+  #   encryptedData:
+  #     password: AgBy3i4OJSWK+PiTySYZZA9rO43cGDEQAx...
+  #   template:
+  #     metadata:
+  #       name: myapp-sealed
+  #       labels:
+  #         app: myapp
+  #     type: Opaque
+
+# ConfigMaps - Application configuration with templating
+configMaps: {}
+  # myapp-config:
+  #   annotations:
+  #     reloader.stakater.com/match: "true"
+  #   data:
+  #     app.yaml:
+  #       content: |
+  #         environment: {{ .Values.environment }}
+  #         database:
+  #           host: {{ .Release.Name }}-db
+  #           port: 5432
+  #         features:
+  #           newUI: {{ .Values.features.newUI | default false }}
+
+# Service Accounts - App service identities
+serviceAccounts: {}
+  # myapp-sa:
+  #   annotations:
+  #     eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/myapp-role
+  #   imagePullSecrets:
+  #     - regcred
+  #   automountServiceAccountToken: true
+
+# Roles - Namespace-scoped permissions
+roles: {}
+  # myapp-role:
+  #   rules:
+  #     - apiGroups: [""]
+  #       resources: ["secrets", "configmaps"]
+  #       verbs: ["get", "list"]
+  #     - apiGroups: ["apps"]
+  #       resources: ["deployments"]
+  #       verbs: ["get", "list", "watch"]
+
+# Role Bindings - Assign roles to subjects
+roleBindings: {}
+  # myapp-binding:
+  #   subjects:
+  #     - kind: ServiceAccount
+  #       name: myapp-sa
+  #       namespace: default
+  #   roleRef:
+  #     kind: Role
+  #     name: myapp-role
+  #     apiGroup: rbac.authorization.k8s.io
+
+# Network Policies - App-specific network rules
+networkPolicies: {}
+  # myapp-policy:
+  #   podSelector:
+  #     matchLabels:
+  #       app: myapp
+  #   policyTypes:
+  #     - Ingress
+  #     - Egress
+  #   ingress:
+  #     - from:
+  #         - podSelector:
+  #             matchLabels:
+  #               app: frontend
+  #       ports:
+  #         - protocol: TCP
+  #           port: 8080
+  #   egress:
+  #     - to:
+  #         - podSelector:
+  #             matchLabels:
+  #               app: database
+  #       ports:
+  #         - protocol: TCP
+  #           port: 5432
+
+# Persistent Volume Claims - App storage requests
+persistentVolumeClaims: {}
+  # myapp-data:
+  #   accessModes:
+  #     - ReadWriteOnce
+  #   size: 10Gi
+  #   storageClassName: fast-ssd
+  #   selector:
+  #     matchLabels:
+  #       app: myapp

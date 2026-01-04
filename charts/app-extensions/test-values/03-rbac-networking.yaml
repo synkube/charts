@@ -1,0 +1,133 @@
+# Test 3: RBAC and NetworkPolicies
+# Demonstrates: ServiceAccounts, Roles, RoleBindings, NetworkPolicies
+
+# Service Accounts for different components
+serviceAccounts:
+  myapp-backend:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/myapp-backend-role
+      vault.hashicorp.com/agent-inject: "true"
+    automountServiceAccountToken: true
+
+  myapp-worker:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/myapp-worker-role
+    imagePullSecrets:
+      - regcred
+    automountServiceAccountToken: false
+
+# Namespace-scoped Roles
+roles:
+  myapp-backend-role:
+    annotations:
+      rbac.authorization.kubernetes.io/autoupdate: "true"
+    rules:
+      - apiGroups: [""]
+        resources: ["secrets", "configmaps"]
+        verbs: ["get", "list"]
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "replicasets"]
+        verbs: ["get", "list", "watch"]
+
+  myapp-worker-role:
+    rules:
+      - apiGroups: [""]
+        resources: ["secrets"]
+        resourceNames: ["myapp-worker-secret"]
+        verbs: ["get"]
+      - apiGroups: ["batch"]
+        resources: ["jobs"]
+        verbs: ["get", "list", "create"]
+
+# Role Bindings
+roleBindings:
+  myapp-backend-binding:
+    subjects:
+      - kind: ServiceAccount
+        name: myapp-backend
+        namespace: default
+      - kind: User
+        name: myapp-developer
+        apiGroup: rbac.authorization.k8s.io
+    roleRef:
+      kind: Role
+      name: myapp-backend-role
+      apiGroup: rbac.authorization.k8s.io
+
+  myapp-worker-binding:
+    subjects:
+      - kind: ServiceAccount
+        name: myapp-worker
+    roleRef:
+      kind: Role
+      name: myapp-worker-role
+
+# Network Policies for app-level micro-segmentation
+networkPolicies:
+  # Allow frontend to backend communication
+  frontend-to-backend:
+    annotations:
+      networkpolicies.kubernetes.io/description: "Allow frontend pods to access backend"
+    podSelector:
+      matchLabels:
+        app: myapp
+        component: backend
+    policyTypes:
+      - Ingress
+    ingress:
+      - from:
+          - podSelector:
+              matchLabels:
+                app: myapp
+                component: frontend
+        ports:
+          - protocol: TCP
+            port: 8080
+          - protocol: TCP
+            port: 9090  # metrics
+
+  # Allow backend to database communication
+  backend-to-database:
+    podSelector:
+      matchLabels:
+        app: myapp
+        component: backend
+    policyTypes:
+      - Egress
+    egress:
+      # Allow database access
+      - to:
+          - podSelector:
+              matchLabels:
+                app: myapp
+                component: database
+        ports:
+          - protocol: TCP
+            port: 5432
+      # Allow DNS resolution
+      - to: []
+        ports:
+          - protocol: UDP
+            port: 53
+          - protocol: TCP
+            port: 53
+      # Allow HTTPS egress for external APIs
+      - to: []
+        ports:
+          - protocol: TCP
+            port: 443
+
+  # Default deny for sensitive workloads
+  worker-deny-all:
+    podSelector:
+      matchLabels:
+        app: myapp
+        component: worker
+        security: high
+    policyTypes:
+      - Ingress
+      - Egress
+    # No rules = deny all (except explicitly allowed)

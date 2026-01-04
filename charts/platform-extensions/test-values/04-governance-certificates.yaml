@@ -1,0 +1,209 @@
+# Test 4: Resource Governance and Certificates
+# Demonstrates: ResourceQuotas, LimitRanges, Certificates with complex configurations
+
+# Resource Quotas for different environments
+resourceQuotas:
+  production-compute-quota:
+    namespace: default
+    annotations:
+      quota.kubernetes.io/managed-by: "platform-team"
+      quota.kubernetes.io/environment: "production"
+    hard:
+      # Compute resources
+      requests.cpu: "100"
+      requests.memory: "200Gi"
+      limits.cpu: "200"
+      limits.memory: "400Gi"
+      # Storage
+      requests.storage: "1Ti"
+      persistentvolumeclaims: "50"
+      # Objects
+      pods: "100"
+      services: "20"
+      secrets: "50"
+      configmaps: "50"
+      # Network
+      services.nodeports: "5"
+      services.loadbalancers: "3"
+
+  production-object-quota:
+    namespace: default
+    hard:
+      # API objects
+      count/deployments.apps: "20"
+      count/replicasets.apps: "40"
+      count/statefulsets.apps: "10"
+      count/jobs.batch: "50"
+      count/cronjobs.batch: "10"
+      # Network objects
+      count/ingresses.networking.k8s.io: "10"
+      count/networkpolicies.networking.k8s.io: "20"
+
+  staging-quota:
+    namespace: default
+    annotations:
+      quota.kubernetes.io/environment: "staging"
+    hard:
+      requests.cpu: "50"
+      requests.memory: "100Gi"
+      limits.cpu: "100"
+      limits.memory: "200Gi"
+      requests.storage: "500Gi"
+      persistentvolumeclaims: "25"
+      pods: "50"
+      services: "10"
+
+  development-quota:
+    namespace: default
+    hard:
+      requests.cpu: "10"
+      requests.memory: "20Gi"
+      limits.cpu: "20"
+      limits.memory: "40Gi"
+      requests.storage: "100Gi"
+      persistentvolumeclaims: "10"
+      pods: "20"
+      services: "5"
+
+# Limit Ranges for resource constraints
+limitRanges:
+  production-container-limits:
+    namespace: default
+    annotations:
+      limitrange.kubernetes.io/managed-by: "platform-team"
+    limits:
+      - type: Container
+        default:
+          cpu: "1000m"
+          memory: "1Gi"
+          ephemeral-storage: "2Gi"
+        defaultRequest:
+          cpu: "100m"
+          memory: "128Mi"
+          ephemeral-storage: "100Mi"
+        max:
+          cpu: "8"
+          memory: "16Gi"
+          ephemeral-storage: "10Gi"
+        min:
+          cpu: "50m"
+          memory: "64Mi"
+          ephemeral-storage: "50Mi"
+        maxLimitRequestRatio:
+          cpu: "4"
+          memory: "2"
+
+  production-pod-limits:
+    namespace: default
+    limits:
+      - type: Pod
+        max:
+          cpu: "16"
+          memory: "32Gi"
+        min:
+          cpu: "100m"
+          memory: "128Mi"
+
+  production-pvc-limits:
+    namespace: default
+    limits:
+      - type: PersistentVolumeClaim
+        max:
+          storage: "1Ti"
+        min:
+          storage: "1Gi"
+
+  staging-limits:
+    namespace: default
+    limits:
+      - type: Container
+        default:
+          cpu: "500m"
+          memory: "512Mi"
+        defaultRequest:
+          cpu: "50m"
+          memory: "64Mi"
+        max:
+          cpu: "4"
+          memory: "8Gi"
+        min:
+          cpu: "25m"
+          memory: "32Mi"
+      - type: PersistentVolumeClaim
+        max:
+          storage: "100Gi"
+        min:
+          storage: "1Gi"
+
+# Cluster Issuers for platform certificate management
+clusterIssuers:
+  letsencrypt-prod:
+    annotations:
+      cert-manager.io/issuer-type: "acme"
+    acme:
+      server: "https://acme-v02.api.letsencrypt.org/directory"
+      email: "platform@company.com"
+      privateKeySecretRef:
+        name: letsencrypt-prod-key
+      solvers:
+        - dns01:
+            cloudflare:
+              email: "platform@company.com"
+              apiTokenSecretRef:
+                name: cloudflare-api-token
+                key: api-token
+          selector:
+            dnsZones:
+              - "company.com"
+              - "*.company.com"
+
+  self-signed-issuer:
+    selfSigned: {}
+
+# Certificates for platform services
+certificates:
+  wildcard-company-com:
+    namespace: gateway-system
+    secretName: wildcard-company-com-tls
+    annotations:
+      cert-manager.io/managed-by: "platform-team"
+      cert-manager.io/certificate-type: "wildcard"
+    issuerRef:
+      name: letsencrypt-prod
+      kind: ClusterIssuer
+    commonName: "*.company.com"
+    dnsNames:
+      - "*.company.com"
+      - "company.com"
+    duration: "2160h"
+    renewBefore: "720h"
+    subject:
+      organizationalUnits:
+        - "Platform Engineering"
+    privateKey:
+      algorithm: RSA
+      size: 2048
+    usages:
+      - digital signature
+      - key encipherment
+      - server auth
+
+  internal-ca-certificate:
+    namespace: cert-manager
+    secretName: internal-ca-tls
+    issuerRef:
+      name: self-signed-issuer
+      kind: ClusterIssuer
+    commonName: "Company Internal CA"
+    isCA: true
+    duration: "43800h"
+    renewBefore: "8760h"
+    subject:
+      organizationalUnits:
+        - "Certificate Authority"
+    privateKey:
+      algorithm: RSA
+      size: 4096
+    usages:
+      - cert sign
+      - digital signature

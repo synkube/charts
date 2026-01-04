@@ -1,0 +1,35 @@
+{{- if .Values.resourceQuotas }}
+{{- range $name, $quota := .Values.resourceQuotas }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {{ $name }}
+  {{- if $quota.namespace }}
+  namespace: {{ $quota.namespace }}
+  {{- end }}
+  labels:
+    {{- include "platform-extensions.labels" $ | nindent 4 }}
+  {{- with $quota.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if $quota.hard }}
+  hard:
+    {{- range $resource, $limit := $quota.hard }}
+    {{ $resource }}: {{ $limit | quote }}
+    {{- end }}
+  {{- end }}
+  {{- if $quota.scopes }}
+  scopes:
+    {{- range $quota.scopes }}
+    - {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- if $quota.scopeSelector }}
+  scopeSelector:
+    {{- toYaml $quota.scopeSelector | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}

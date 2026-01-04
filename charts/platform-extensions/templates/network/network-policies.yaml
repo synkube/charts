@@ -1,0 +1,33 @@
+{{- if .Values.networkPolicies }}
+{{- range $name, $policy := .Values.networkPolicies }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  {{- if $policy.namespace }}
+  namespace: {{ $policy.namespace }}
+  {{- end }}
+  labels:
+    {{- include "platform-extensions.labels" $ | nindent 4 }}
+  {{- with $policy.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  podSelector:
+    {{- toYaml $policy.podSelector | nindent 4 }}
+  policyTypes:
+    {{- range $policy.policyTypes }}
+    - {{ . }}
+    {{- end }}
+  {{- if $policy.ingress }}
+  ingress:
+    {{- toYaml $policy.ingress | nindent 4 }}
+  {{- end }}
+  {{- if $policy.egress }}
+  egress:
+    {{- toYaml $policy.egress | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}

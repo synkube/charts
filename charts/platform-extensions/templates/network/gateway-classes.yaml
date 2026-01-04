@@ -1,0 +1,24 @@
+{{- range $name, $gc := .Values.gatewayClasses }}
+{{- if include "common.hasApi" (list "gateway.networking.k8s.io/v1/GatewayClass" $) }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "platform-extensions.labels" $ | nindent 4 }}
+  {{- with $gc.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  controllerName: {{ $gc.controllerName }}
+  {{- if $gc.parametersRef }}
+  parametersRef:
+    {{- toYaml $gc.parametersRef | nindent 4 }}
+  {{- end }}
+  {{- if $gc.description }}
+  description: {{ $gc.description | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}

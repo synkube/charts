@@ -1,0 +1,23 @@
+{{- if .Values.priorityClasses }}
+{{- range $name, $pc := .Values.priorityClasses }}
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "platform-extensions.labels" $ | nindent 4 }}
+  {{- with $pc.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+value: {{ $pc.value }}
+globalDefault: {{ $pc.globalDefault | default false }}
+{{- if $pc.description }}
+description: {{ $pc.description | quote }}
+{{- end }}
+{{- if $pc.preemptionPolicy }}
+preemptionPolicy: {{ $pc.preemptionPolicy }}
+{{- end }}
+{{- end }}
+{{- end }}

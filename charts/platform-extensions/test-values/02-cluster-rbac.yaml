@@ -1,0 +1,167 @@
+# Test 2: Cluster-wide RBAC Configuration
+# Demonstrates: ClusterRoles, ClusterRoleBindings with aggregation
+
+# Cluster Roles with different permission levels
+clusterRoles:
+  platform-admin:
+    annotations:
+      rbac.authorization.kubernetes.io/autoupdate: "true"
+    rules:
+      - apiGroups: ["*"]
+        resources: ["*"]
+        verbs: ["*"]
+      - nonResourceURLs: ["*"]
+        verbs: ["*"]
+
+  platform-operator:
+    annotations:
+      rbac.authorization.kubernetes.io/description: "Platform operator with infrastructure permissions"
+    rules:
+      # Core resources
+      - apiGroups: [""]
+        resources: ["nodes", "namespaces", "persistentvolumes"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+      - apiGroups: [""]
+        resources: ["secrets", "configmaps"]
+        verbs: ["get", "list", "watch", "create", "update", "patch"]
+      # Storage
+      - apiGroups: ["storage.k8s.io"]
+        resources: ["storageclasses", "volumeattachments"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+      - apiGroups: ["snapshot.storage.k8s.io"]
+        resources: ["volumesnapshotclasses", "volumesnapshots", "volumesnapshotcontents"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+      # External Secrets
+      - apiGroups: ["external-secrets.io"]
+        resources: ["clustersecretstores", "externalsecrets", "secretstores"]
+        verbs: ["*"]
+      # Networking
+      - apiGroups: ["networking.k8s.io"]
+        resources: ["networkpolicies", "ingressclasses"]
+        verbs: ["*"]
+      - apiGroups: ["gateway.networking.k8s.io"]
+        resources: ["gatewayclasses", "gateways"]
+        verbs: ["*"]
+
+  cluster-viewer:
+    aggregationRule:
+      clusterRoleSelectors:
+        - matchLabels:
+            rbac.platform/aggregate-to-viewer: "true"
+    rules: [] # Rules are automatically aggregated
+
+  # Aggregated role component - secrets viewer
+  secrets-viewer:
+    annotations:
+      rbac.authorization.kubernetes.io/description: "View secrets across all namespaces"
+    labels:
+      rbac.platform/aggregate-to-viewer: "true"
+    rules:
+      - apiGroups: [""]
+        resources: ["secrets"]
+        verbs: ["get", "list"]
+      - apiGroups: ["external-secrets.io"]
+        resources: ["externalsecrets", "secretstores", "clustersecretstores"]
+        verbs: ["get", "list"]
+
+  # Aggregated role component - storage viewer
+  storage-viewer:
+    labels:
+      rbac.platform/aggregate-to-viewer: "true"
+    rules:
+      - apiGroups: [""]
+        resources: ["persistentvolumes", "persistentvolumeclaims"]
+        verbs: ["get", "list"]
+      - apiGroups: ["storage.k8s.io"]
+        resources: ["storageclasses", "volumeattachments"]
+        verbs: ["get", "list"]
+      - apiGroups: ["snapshot.storage.k8s.io"]
+        resources: ["*"]
+        verbs: ["get", "list"]
+
+  # Developer role - limited cluster access
+  developer:
+    rules:
+      - apiGroups: [""]
+        resources: ["nodes", "namespaces"]
+        verbs: ["get", "list"]
+      - apiGroups: ["metrics.k8s.io"]
+        resources: ["nodes", "pods"]
+        verbs: ["get", "list"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+        verbs: ["get", "list", "watch"]
+      - nonResourceURLs: ["/metrics", "/healthz", "/version"]
+        verbs: ["get"]
+
+# Cluster Role Bindings
+clusterRoleBindings:
+  platform-admins:
+    annotations:
+      rbac.authorization.kubernetes.io/description: "Platform administrators with full cluster access"
+    subjects:
+      - kind: Group
+        name: platform-admins
+        apiGroup: rbac.authorization.k8s.io
+      - kind: Group
+        name: sre-team
+        apiGroup: rbac.authorization.k8s.io
+      - kind: ServiceAccount
+        name: platform-admin-sa
+        namespace: platform-system
+    roleRef:
+      kind: ClusterRole
+      name: platform-admin
+      apiGroup: rbac.authorization.k8s.io
+
+  platform-operators:
+    subjects:
+      - kind: Group
+        name: platform-operators
+        apiGroup: rbac.authorization.k8s.io
+      - kind: ServiceAccount
+        name: external-secrets-operator
+        namespace: external-secrets-system
+      - kind: ServiceAccount
+        name: cert-manager
+        namespace: cert-manager
+    roleRef:
+      kind: ClusterRole
+      name: platform-operator
+
+  cluster-viewers:
+    subjects:
+      - kind: Group
+        name: cluster-viewers
+        apiGroup: rbac.authorization.k8s.io
+      - kind: Group
+        name: auditors
+        apiGroup: rbac.authorization.k8s.io
+    roleRef:
+      kind: ClusterRole
+      name: cluster-viewer
+
+  developers:
+    subjects:
+      - kind: Group
+        name: developers
+        apiGroup: rbac.authorization.k8s.io
+      - kind: Group
+        name: contractors
+        apiGroup: rbac.authorization.k8s.io
+    roleRef:
+      kind: ClusterRole
+      name: developer
+
+  # Service account bindings for system components
+  system-components:
+    subjects:
+      - kind: ServiceAccount
+        name: ingress-nginx
+        namespace: ingress-nginx
+      - kind: ServiceAccount
+        name: gateway-controller
+        namespace: gateway-system
+    roleRef:
+      kind: ClusterRole
+      name: platform-operator

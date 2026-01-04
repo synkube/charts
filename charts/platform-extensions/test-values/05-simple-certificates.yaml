@@ -1,0 +1,25 @@
+# Test 5: Simple Certificate Management
+# Demonstrates: Basic Certificate resources that work reliably
+
+# Simple certificates for platform services
+certificates:
+  wildcard-cert:
+    namespace: gateway-system
+    secretName: wildcard-tls
+    issuerRef:
+      name: letsencrypt-prod
+      kind: ClusterIssuer
+    commonName: "*.company.com"
+    dnsNames:
+      - "*.company.com"
+      - "company.com"
+
+  internal-ca:
+    namespace: cert-manager
+    secretName: internal-ca-tls
+    issuerRef:
+      name: self-signed-issuer
+      kind: ClusterIssuer
+    commonName: "Company Internal CA"
+    isCA: true
+    duration: "43800h"

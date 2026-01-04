@@ -1,0 +1,259 @@
+name: Helm Charts - Test and Release
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      charts: ${{ steps.matrix.outputs.charts }}
+      has-changes: ${{ steps.matrix.outputs.has-changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changes
+        uses: tj-actions/changed-files@v44
+
+      - name: Detect changed charts
+        id: matrix
+        env:
+          MODIFIED_FILES: ${{ steps.changes.outputs.all_modified_files }}
+        run: |
+          set -x
+
+          # Get all chart directories
+          if [ -d "charts" ]; then
+            charts_dirs=($(ls charts | tr -d " "))
+          else
+            echo "No charts directory found"
+            echo "charts=[]" >> $GITHUB_OUTPUT
+            echo "has-changes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Available charts: ${charts_dirs[@]}"
+
+          # Parse modified files
+          modified_files=(${{ env.MODIFIED_FILES }})
+          echo "Modified files: ${modified_files[@]}"
+
+          # Find changed charts
+          changed_charts=()
+          for chart in "${charts_dirs[@]}"; do
+            for file in "${modified_files[@]}"; do
+              if [[ $file =~ charts\/$chart/.* ]]; then
+                changed_charts+=("$chart")
+                break
+              fi
+            done
+          done
+
+          echo "Changed charts: ${changed_charts[@]}"
+
+          # Create JSON output
+          if [ ${#changed_charts[@]} -eq 0 ]; then
+            echo "charts=[]" >> $GITHUB_OUTPUT
+            echo "has-changes=false" >> $GITHUB_OUTPUT
+          else
+            charts_output=$(jq -nc '[$ARGS.positional[]]' --args "${changed_charts[@]}")
+            echo "charts=$charts_output" >> $GITHUB_OUTPUT
+            echo "has-changes=true" >> $GITHUB_OUTPUT
+          fi
+
+  test-charts:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.has-changes == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        chart: ${{ fromJSON(needs.detect-changes.outputs.charts) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4.3.1
+      - uses: mikefarah/yq@v4.32.2
+      - uses: azure/setup-kubectl@v4
+
+      - name: Update Helm repositories
+        run: |
+          echo "🔄 Updating Helm repository indexes (once for all charts)"
+          helm repo update || echo "No repositories configured, continuing..."
+
+      - name: Get chart version
+        id: vars
+        run: |
+          chart_version=$(yq '.version' charts/${{ matrix.chart }}/Chart.yaml)
+          echo "CHART_VERSION=$chart_version" >> $GITHUB_ENV
+          echo "Chart ${{ matrix.chart }} version: $chart_version"
+
+      - name: Helm dependency build
+        working-directory: charts/${{ matrix.chart }}
+        run: |
+          if [ -f "Chart.lock" ] || [ -f "requirements.yaml" ] || [ -f "Chart.yaml" ] && grep -q "dependencies:" Chart.yaml; then
+            echo "📦 Building dependencies for ${{ matrix.chart }} (no repo refresh)"
+            helm dependency build --skip-refresh
+          else
+            echo "ℹ️  No dependencies found for ${{ matrix.chart }}"
+          fi
+
+      - name: Run chart test suite
+        run: |
+          echo "🚀 Running comprehensive test suite for ${{ matrix.chart }}"
+          chmod +x ./test-render.sh
+          ./test-render.sh charts/${{ matrix.chart }}
+
+      - name: Helm package
+        working-directory: charts/${{ matrix.chart }}
+        run: |
+          echo "📋 Packaging ${{ matrix.chart }}"
+          helm package . --version ${{ env.CHART_VERSION }}
+
+      - name: Upload chart artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chart-${{ matrix.chart }}-${{ env.CHART_VERSION }}
+          path: charts/${{ matrix.chart }}/${{ matrix.chart }}-${{ env.CHART_VERSION }}.tgz
+          retention-days: 1
+
+  publish-charts:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, test-charts]
+    if: ${{ needs.detect-changes.outputs.has-changes == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        chart: ${{ fromJSON(needs.detect-changes.outputs.charts) }}
+
+    outputs:
+      charts-published: ${{ steps.collect.outputs.charts }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4.3.1
+      - uses: mikefarah/yq@v4.32.2
+
+      - name: Get chart version
+        id: vars
+        run: |
+          chart_version=$(yq '.version' charts/${{ matrix.chart }}/Chart.yaml)
+          echo "CHART_VERSION=$chart_version" >> $GITHUB_ENV
+          repository=${{ github.repository }}
+          echo "REPOSITORY=${repository@L}" >> $GITHUB_ENV
+
+      - name: Download chart artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: chart-${{ matrix.chart }}-${{ env.CHART_VERSION }}
+          path: charts/${{ matrix.chart }}/
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push Helm chart to GHCR
+        working-directory: charts/${{ matrix.chart }}
+        run: |
+          echo "🚀 Pushing ${{ matrix.chart }} to GHCR"
+          helm push ${{ matrix.chart }}-${{ env.CHART_VERSION }}.tgz oci://ghcr.io/${{ env.REPOSITORY }}/charts
+
+      - name: Collect published charts
+        id: collect
+        run: |
+          echo "charts=${{ matrix.chart }}" >> $GITHUB_OUTPUT
+
+      - name: Summary
+        run: |
+          echo "### 📦 Chart Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Chart:** \`${{ matrix.chart }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ env.CHART_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** \`oci://ghcr.io/${{ env.REPOSITORY }}/charts/${{ matrix.chart }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🎉 Successfully pushed chart to GitHub Container Registry!" >> $GITHUB_STEP_SUMMARY
+
+  publish-pages:
+    runs-on: ubuntu-latest
+    needs: [detect-changes, publish-charts]
+    if: ${{ needs.detect-changes.outputs.has-changes == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: azure/setup-helm@v4.3.1
+      - uses: mikefarah/yq@v4.32.2
+
+      - name: Get repository info
+        run: |
+          repository=${{ github.repository }}
+          echo "REPOSITORY=${repository@L}" >> $GITHUB_ENV
+          org_name=$(echo $repository | cut -d'/' -f1)
+          repo_name=$(echo $repository | cut -d'/' -f2)
+          echo "ORG_NAME=${org_name@L}" >> $GITHUB_ENV
+          echo "REPO_NAME=${repo_name@L}" >> $GITHUB_ENV
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.6.0
+        env:
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          CR_CHARTS_REPO: "https://${{ env.ORG_NAME }}.github.io/${{ env.REPO_NAME }}"
+        with:
+          charts_dir: charts
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .cr-release-packages
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Pages Summary
+        run: |
+          echo "### 📄 GitHub Pages Updated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Charts Repository:** https://${{ env.ORG_NAME }}.github.io/${{ env.REPO_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Add to Helm with:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "helm repo add ${{ env.ORG_NAME }} https://${{ env.ORG_NAME }}.github.io/${{ env.REPO_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "helm repo update" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

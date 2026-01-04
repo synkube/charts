@@ -1,0 +1,104 @@
+{{- range $name, $cert := .Values.certificates }}
+{{- if include "common.hasApi" (list "cert-manager.io/v1/Certificate" $) }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $name }}
+  {{- if $cert.namespace }}
+  namespace: {{ $cert.namespace }}
+  {{- end }}
+  labels:
+    {{- include "platform-extensions.labels" $ | nindent 4 }}
+  {{- with $cert.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  secretName: {{ $cert.secretName }}
+  issuerRef:
+    name: {{ $cert.issuerRef.name }}
+    kind: {{ $cert.issuerRef.kind | default "ClusterIssuer" }}
+    {{- if $cert.issuerRef.group }}
+    group: {{ $cert.issuerRef.group }}
+    {{- end }}
+  {{- if $cert.commonName }}
+  commonName: {{ $cert.commonName | quote }}
+  {{- end }}
+  {{- if $cert.dnsNames }}
+  dnsNames:
+    {{- range $cert.dnsNames }}
+    - {{ . | quote }}
+    {{- end }}
+  {{- end }}
+  {{- if $cert.ipAddresses }}
+  ipAddresses:
+    {{- range $cert.ipAddresses }}
+    - {{ . | quote }}
+    {{- end }}
+  {{- end }}
+  {{- if $cert.uris }}
+  uris:
+    {{- range $cert.uris }}
+    - {{ . | quote }}
+    {{- end }}
+  {{- end }}
+  {{- if $cert.duration }}
+  duration: {{ $cert.duration }}
+  {{- end }}
+  {{- if $cert.renewBefore }}
+  renewBefore: {{ $cert.renewBefore }}
+  {{- end }}
+  {{- if $cert.subject }}
+  subject:
+    {{- if $cert.subject.organizationalUnits }}
+    organizationalUnits:
+      {{- range $cert.subject.organizationalUnits }}
+      - {{ . | quote }}
+      {{- end }}
+    {{- end }}
+    {{- if $cert.subject.organizations }}
+    organizations:
+      {{- range $cert.subject.organizations }}
+      - {{ . | quote }}
+      {{- end }}
+    {{- end }}
+    {{- if $cert.subject.countries }}
+    countries:
+      {{- range $cert.subject.countries }}
+      - {{ . | quote }}
+      {{- end }}
+    {{- end }}
+    {{- if $cert.subject.localities }}
+    localities:
+      {{- range $cert.subject.localities }}
+      - {{ . | quote }}
+      {{- end }}
+    {{- end }}
+    {{- if $cert.subject.provinces }}
+    provinces:
+      {{- range $cert.subject.provinces }}
+      - {{ . | quote }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if $cert.isCA }}
+  isCA: {{ $cert.isCA }}
+  {{- end }}
+  {{- if $cert.privateKey }}
+  privateKey:
+    {{- if $cert.privateKey.algorithm }}
+    algorithm: {{ $cert.privateKey.algorithm }}
+    {{- end }}
+    {{- if $cert.privateKey.size }}
+    size: {{ $cert.privateKey.size }}
+    {{- end }}
+  {{- end }}
+  {{- if $cert.usages }}
+  usages:
+    {{- range $cert.usages }}
+    - {{ . | quote }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,29 @@
+# Helm
+*.tgz
+charts/*/charts/
+charts/*/requirements.lock
+
+# Test outputs
+**/.test-output/
+.test-output/
+*.kubectl
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Build artifacts
+dist/
+build/
