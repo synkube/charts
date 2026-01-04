@@ -1,0 +1,34 @@
+# Patterns to ignore when building packages.
+# This supports shell glob matching, relative path matching, and
+# temporary file patterns.
+
+# Test files
+test-values/
+.test-output/
+
+# Common VCS dirs
+.git/
+.gitignore
+.bzr/
+.bzrignore
+.hg/
+.hgignore
+.svn/
+
+# Common backup files
+*.swp
+*.bak
+*.tmp
+*.orig
+*~
+
+# Editor/IDE files
+.project
+.idea/
+*.tmproj
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+

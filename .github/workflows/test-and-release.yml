@@ -247,32 +247,22 @@ jobs:
       # Package all charts and generate index.yaml (no GitHub Releases)
       - name: Package charts
         run: |
-          mkdir -p .chart-packages
+          mkdir -p charts-packaged
           for chart in charts/*/; do
             if [ -f "$chart/Chart.yaml" ]; then
               echo "📦 Packaging $chart"
               helm dependency build "$chart" --skip-refresh 2>/dev/null || true
-              helm package "$chart" -d .chart-packages
+              helm package "$chart" -d charts-packaged
             fi
           done
+          helm repo index charts-packaged --url https://${{ env.ORG_NAME }}.github.io/${{ env.REPO_NAME }}/charts-packaged
 
-      - name: Generate index and push to gh-pages
-        run: |
-          git fetch origin gh-pages:gh-pages || git checkout --orphan gh-pages
-          git checkout gh-pages
-
-          # Copy new packages
-          cp .chart-packages/*.tgz . 2>/dev/null || true
-
-          # Generate/update index
-          helm repo index . --url https://${{ env.ORG_NAME }}.github.io/${{ env.REPO_NAME }}
-
-          # Commit and push
-          git add .
-          git commit -m "Update Helm charts" || echo "No changes to commit"
-          git push origin gh-pages
-
-          git checkout main
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./charts-packaged
+          destination_dir: charts-packaged
 
       - name: Pages Summary
         run: |
