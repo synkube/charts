@@ -3,13 +3,13 @@ entries:
   app-extensions:
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2026-01-04T00:54:21.852142696Z"
+    created: "2026-01-04T01:38:53.409714952Z"
     dependencies:
     - name: common
       repository: file://../common
       version: 1.0.0
     description: Namespace-scoped Kubernetes resources for application teams
-    digest: fb33d826ca369cbb5c8046ffc3ddd3ca2d7e87aecca9aabb86892df243cd4bc0
+    digest: e71a3a2870deff8e4ade90542429a973605264799376f3af361854985d3dd7ed
     keywords:
     - kubernetes
     - extensions
@@ -24,17 +24,42 @@ entries:
     - https://github.com/company/synkube-charts
     type: application
     urls:
-    - https://github.com/synkube/charts/releases/download/app-extensions-1.0.0/app-extensions-1.0.0.tgz
+    - https://synkube.github.io/charts/app-extensions-1.0.0.tgz
+    version: 1.0.0
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-04T01:38:53.411417262Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      version: 1.0.0
+    description: Namespace-scoped Kubernetes resources for application teams
+    digest: e71a3a2870deff8e4ade90542429a973605264799376f3af361854985d3dd7ed
+    keywords:
+    - kubernetes
+    - extensions
+    - secrets
+    - rbac
+    - storage
+    maintainers:
+    - email: platform@company.com
+      name: Platform Team
+    name: app-extensions
+    sources:
+    - https://github.com/company/synkube-charts
+    type: application
+    urls:
+    - https://synkube.github.io/charts/.chart-packages/app-extensions-1.0.0.tgz
     version: 1.0.0
   common:
   - annotations:
       category: Infrastructure
     apiVersion: v2
     appVersion: 1.0.0
-    created: "2026-01-04T00:54:21.988256727Z"
+    created: "2026-01-04T01:38:53.40991063Z"
     description: A library chart for synkube extension charts providing common utilities
       and functions
-    digest: 9265cce604e3888e5e4dfbec61675e2b99692cdd75a655c24164aae33d8cc8f8
+    digest: bdecade1b7336984721c842e670b390d7a23f3e78cf8c9cd5ccc8359bdb1a158
     home: https://github.com/synkube/synkube-charts
     keywords:
     - common
@@ -49,19 +74,43 @@ entries:
     - https://github.com/synkube/synkube-charts
     type: library
     urls:
-    - https://github.com/synkube/charts/releases/download/common-1.0.0/common-1.0.0.tgz
+    - https://synkube.github.io/charts/common-1.0.0.tgz
+    version: 1.0.0
+  - annotations:
+      category: Infrastructure
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-04T01:38:53.411972686Z"
+    description: A library chart for synkube extension charts providing common utilities
+      and functions
+    digest: bdecade1b7336984721c842e670b390d7a23f3e78cf8c9cd5ccc8359bdb1a158
+    home: https://github.com/synkube/synkube-charts
+    keywords:
+    - common
+    - library
+    - synkube
+    - utilities
+    maintainers:
+    - email: platform@company.com
+      name: Platform Team
+    name: common
+    sources:
+    - https://github.com/synkube/synkube-charts
+    type: library
+    urls:
+    - https://synkube.github.io/charts/.chart-packages/common-1.0.0.tgz
     version: 1.0.0
   platform-extensions:
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2026-01-04T00:54:22.123035825Z"
+    created: "2026-01-04T01:38:53.41082573Z"
     dependencies:
     - name: common
       repository: file://../common
       version: 1.0.0
     description: Cluster-scoped Kubernetes resources for platform teams (requires
       cluster-admin)
-    digest: 02d41b4d10cf3e291433044252db1d9fa9cf20bd000ce3c5c7d9b2b22a212265
+    digest: d870257705647dca4a87df77eb56a08df4a1344474986bf83a15dadabe503874
     keywords:
     - kubernetes
     - platform
@@ -77,6 +126,33 @@ entries:
     - https://github.com/company/synkube-charts
     type: application
     urls:
-    - https://github.com/synkube/charts/releases/download/platform-extensions-1.0.0/platform-extensions-1.0.0.tgz
+    - https://synkube.github.io/charts/platform-extensions-1.0.0.tgz
     version: 1.0.0
-generated: "2026-01-04T00:54:22.123042377Z"
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-04T01:38:53.413683461Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      version: 1.0.0
+    description: Cluster-scoped Kubernetes resources for platform teams (requires
+      cluster-admin)
+    digest: d870257705647dca4a87df77eb56a08df4a1344474986bf83a15dadabe503874
+    keywords:
+    - kubernetes
+    - platform
+    - cluster-admin
+    - storage
+    - rbac
+    - networking
+    maintainers:
+    - email: platform@company.com
+      name: Platform Team
+    name: platform-extensions
+    sources:
+    - https://github.com/company/synkube-charts
+    type: application
+    urls:
+    - https://synkube.github.io/charts/.chart-packages/platform-extensions-1.0.0.tgz
+    version: 1.0.0
+generated: "2026-01-04T01:38:53.408908637Z"
