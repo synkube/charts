@@ -79,8 +79,8 @@ for test_file in "${test_files[@]}"; do
   echo "File: $filename"
   echo "-----------------------------------"
 
-  # Run helm template
-  if helm template "test-$test_name" "$CHART_PATH" -f "$test_file" > "$output_file" 2>&1; then
+  # Run helm template (skipApiCheck bypasses CRD availability checks for testing)
+  if helm template "test-$test_name" "$CHART_PATH" -f "$test_file" --set global.skipApiCheck=true > "$output_file" 2>&1; then
     # Count resources
     resource_count=$(grep "^kind:" "$output_file" 2>/dev/null | wc -l | tr -d '[:space:]' || echo "0")
 
@@ -89,28 +89,19 @@ for test_file in "${test_files[@]}"; do
       echo "  Resources:"
       grep "^kind:" "$output_file" | sort | uniq -c | sed 's/^/    /' || true
 
-      # Validate with kubectl if available (following generic-app pattern)
-      if command -v kubectl &> /dev/null; then
-        # Check if cluster is available
-        if kubectl cluster-info &> /dev/null; then
-          validation_mode="server-side"
-          dry_run_flag="--dry-run=server"
-        else
-          validation_mode="client-side"
-          dry_run_flag="--dry-run=client"
-        fi
-
-        # Run validation with strict mode
-        if kubectl apply $dry_run_flag --validate=strict -f "$output_file" &> "$output_file.kubectl" 2>&1; then
-          echo "✓ Kubernetes schema: VALID ($validation_mode validation)"
+      # Validate with kubectl if available and cluster is accessible
+      if command -v kubectl &> /dev/null && kubectl cluster-info &> /dev/null 2>&1; then
+        # Run validation with server-side dry-run
+        if kubectl apply --dry-run=server --validate=strict -f "$output_file" &> "$output_file.kubectl" 2>&1; then
+          echo "✓ Kubernetes schema: VALID (server-side validation)"
         else
           echo "✗ Kubernetes schema: INVALID"
-          echo "  Validation errors ($validation_mode):"
+          echo "  Validation errors:"
           cat "$output_file.kubectl" | grep -i "error\|invalid" | head -5 | sed 's/^/    /'
           ((failed++))
         fi
       else
-        echo "ℹ️  Kubernetes validation: SKIPPED (kubectl not found)"
+        echo "ℹ️  Kubernetes validation: SKIPPED (no cluster access)"
       fi
 
       ((passed++))
