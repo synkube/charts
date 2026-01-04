@@ -33,6 +33,7 @@
       font-size: 0.875rem;
     }
     code { color: #34d399; }
+    .comment { color: #6b7280; }
     table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
     th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
     th { color: #94a3b8; font-weight: 500; }
@@ -59,14 +60,14 @@
 
     <div class="card">
       <h2>Quick Start</h2>
-      <pre><code># Add the Helm repository
+      <pre><code><span class="comment"># Add the Helm repository</span>
 helm repo add synkube https://synkube.github.io/charts
 helm repo update
 
-# Search available charts
+<span class="comment"># Search available charts</span>
 helm search repo synkube
 
-# Install a chart
+<span class="comment"># Install a chart</span>
 helm install myapp synkube/app-extensions -f values.yaml</code></pre>
     </div>
 
