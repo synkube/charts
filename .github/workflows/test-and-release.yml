@@ -245,8 +245,8 @@ jobs:
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
-      # Delete existing releases to allow overwrite
-      - name: Delete existing releases
+      # Delete existing releases and tags to allow overwrite
+      - name: Delete existing releases and tags
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -254,12 +254,28 @@ jobs:
             if [ -f "$chart/Chart.yaml" ]; then
               chart_name=$(basename "$chart")
               version=$(yq '.version' "$chart/Chart.yaml")
-              release_name="${chart_name}-${version}"
-              echo "🗑️ Deleting release $release_name (if exists)"
-              gh release delete "$release_name" --yes 2>/dev/null || true
-              git push --delete origin "$release_name" 2>/dev/null || true
+              tag="${chart_name}-${version}"
+
+              echo "🗑️ Checking release/tag: $tag"
+
+              # Check if release exists and delete it
+              if gh release view "$tag" &>/dev/null; then
+                echo "  Deleting release $tag"
+                gh release delete "$tag" --yes --cleanup-tag
+              fi
+
+              # Force delete tag if it still exists
+              if git ls-remote --tags origin | grep -q "refs/tags/$tag$"; then
+                echo "  Deleting remote tag $tag"
+                git push origin ":refs/tags/$tag"
+              fi
+
+              # Delete local tag if exists
+              git tag -d "$tag" 2>/dev/null || true
             fi
           done
+
+          echo "✅ Cleanup complete"
 
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.7.0
