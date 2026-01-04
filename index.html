@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Synkube Helm Charts</title>
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e4e4e7;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 2.5rem; margin-bottom: 0.5rem; color: #60a5fa; }
+    .subtitle { color: #94a3b8; margin-bottom: 2rem; }
+    .card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    h2 { font-size: 1.25rem; color: #f472b6; margin-bottom: 1rem; }
+    pre {
+      background: #0f172a;
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.875rem;
+    }
+    code { color: #34d399; }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+    th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    th { color: #94a3b8; font-weight: 500; }
+    a { color: #60a5fa; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .badge {
+      display: inline-block;
+      background: #3b82f6;
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      margin-left: 0.5rem;
+    }
+    .badge.library { background: #8b5cf6; }
+    .version { color: #94a3b8; font-size: 0.875rem; }
+    .loading { color: #94a3b8; font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⎈ Synkube Helm Charts</h1>
+    <p class="subtitle">Platform and application extensions for Kubernetes</p>
+
+    <div class="card">
+      <h2>Quick Start</h2>
+      <pre><code># Add the Helm repository
+helm repo add synkube https://synkube.github.io/charts
+helm repo update
+
+# Search available charts
+helm search repo synkube
+
+# Install a chart
+helm install myapp synkube/app-extensions -f values.yaml</code></pre>
+    </div>
+
+    <div class="card">
+      <h2>Available Charts</h2>
+      <table>
+        <thead>
+          <tr><th>Chart</th><th>Version</th><th>Description</th></tr>
+        </thead>
+        <tbody id="charts-table">
+          <tr><td colspan="3" class="loading">Loading charts...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>OCI Registry</h2>
+      <pre><code>helm pull oci://ghcr.io/synkube/charts/app-extensions --version 1.0.0</code></pre>
+    </div>
+
+    <p style="margin-top: 2rem; color: #64748b;">
+      Source: <a href="https://github.com/synkube/charts">github.com/synkube/charts</a>
+    </p>
+  </div>
+
+  <script>
+    async function loadCharts() {
+      const tbody = document.getElementById('charts-table');
+
+      try {
+        const response = await fetch('index.yaml');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const yamlText = await response.text();
+        const data = jsyaml.load(yamlText);
+
+        tbody.innerHTML = '';
+
+        const entries = data.entries || {};
+        const chartNames = Object.keys(entries).sort();
+
+        for (const name of chartNames) {
+          const versions = entries[name];
+          if (!versions || versions.length === 0) continue;
+
+          // Get latest version (first in array)
+          const latest = versions[0];
+          const isLibrary = latest.type === 'library';
+
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>
+              <code>${name}</code>
+              ${isLibrary ? '<span class="badge library">library</span>' : ''}
+            </td>
+            <td class="version">${latest.version}</td>
+            <td>${latest.description || ''}</td>
+          `;
+          tbody.appendChild(row);
+        }
+
+        if (chartNames.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3">No charts found in index.yaml</td></tr>';
+        }
+      } catch (error) {
+        console.error('Failed to load charts:', error);
+        // Show fallback table with static data
+        tbody.innerHTML = `
+          <tr><td><code>app-extensions</code></td><td class="version">1.0.0</td><td>Namespace-scoped resources for application teams</td></tr>
+          <tr><td><code>platform-extensions</code></td><td class="version">1.0.0</td><td>Cluster-scoped resources for platform teams</td></tr>
+          <tr><td><code>common</code><span class="badge library">library</span></td><td class="version">1.0.0</td><td>Shared utilities and helpers</td></tr>
+        `;
+      }
+    }
+
+    loadCharts();
+  </script>
+</body>
+</html>
