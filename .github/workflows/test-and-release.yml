@@ -221,12 +221,7 @@ jobs:
     needs: [detect-changes, publish-charts]
     if: ${{ always() && needs.publish-charts.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      contents: write # Required for chart-releaser to push to gh-pages branch
 
     steps:
       - uses: actions/checkout@v4
@@ -234,7 +229,6 @@ jobs:
           fetch-depth: 0
 
       - uses: azure/setup-helm@v4.3.1
-      - uses: mikefarah/yq@v4.32.2
 
       - name: Get repository info
         run: |
@@ -250,29 +244,18 @@ jobs:
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
+      # chart-releaser creates GitHub releases and updates gh-pages branch with index.yaml
+      # Requires GitHub Pages configured to deploy from gh-pages branch (not Actions)
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.6.0
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-          CR_CHARTS_REPO: "https://${{ env.ORG_NAME }}.github.io/${{ env.REPO_NAME }}"
         with:
           charts_dir: charts
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: .cr-release-packages
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
       - name: Pages Summary
         run: |
-          echo "### 📄 GitHub Pages Updated" >> $GITHUB_STEP_SUMMARY
+          echo "### 📄 Helm Repository Updated" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Charts Repository:** https://${{ env.ORG_NAME }}.github.io/${{ env.REPO_NAME }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
