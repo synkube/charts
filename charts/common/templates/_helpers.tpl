@@ -53,19 +53,25 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{/*
 Check if a custom resource should be rendered
 Returns non-empty if should render, empty if not
-This is the shared function that both extension charts can use
 
 Usage: {{ if include "common.hasApi" (list "external-secrets.io/v1/ExternalSecret" .) }}
 
 The function will render resources if:
-1. No capabilities available (offline/testing mode) OR
-2. No APIVersions available (offline/testing mode) OR
-3. The specific API resource is available in the cluster
+1. global.skipApiCheck is true (for testing/CI) OR
+2. No capabilities available (offline mode) OR
+3. No APIVersions available (offline mode) OR
+4. The specific API resource is available in the cluster
 */}}
 {{- define "common.hasApi" -}}
 {{- $api := index . 0 -}}
 {{- $ctx := index . 1 -}}
-{{- if or (not $ctx.Capabilities) (not $ctx.Capabilities.APIVersions) ($ctx.Capabilities.APIVersions.Has $api) -}}
+{{- $skipCheck := false -}}
+{{- if $ctx.Values.global -}}
+  {{- if $ctx.Values.global.skipApiCheck -}}
+    {{- $skipCheck = true -}}
+  {{- end -}}
+{{- end -}}
+{{- if or $skipCheck (not $ctx.Capabilities) (not $ctx.Capabilities.APIVersions) ($ctx.Capabilities.APIVersions.Has $api) -}}
 render
 {{- end -}}
 {{- end }}
