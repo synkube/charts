@@ -1,5 +1,31 @@
 apiVersion: v1
 entries:
+  app-extensions:
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-04T04:04:21.616660737Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      version: 1.0.0
+    description: Namespace-scoped Kubernetes resources for application teams
+    digest: ce82626083b7c8e34d1ccf40ee86a88b9f3a4adf2d20a40bd1e4d9308b0a6392
+    keywords:
+    - kubernetes
+    - extensions
+    - secrets
+    - rbac
+    - storage
+    maintainers:
+    - email: platform@company.com
+      name: Platform Team
+    name: app-extensions
+    sources:
+    - https://github.com/company/synkube-charts
+    type: application
+    urls:
+    - https://github.com/synkube/charts/releases/download/app-extensions-1.0.0/app-extensions-1.0.0.tgz
+    version: 1.0.0
   common:
   - annotations:
       category: Infrastructure
@@ -25,4 +51,32 @@ entries:
     urls:
     - https://github.com/synkube/charts/releases/download/common-1.0.0/common-1.0.0.tgz
     version: 1.0.0
-generated: "2026-01-04T04:00:33.410759761Z"
+  platform-extensions:
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-04T04:04:22.318010837Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      version: 1.0.0
+    description: Cluster-scoped Kubernetes resources for platform teams (requires
+      cluster-admin)
+    digest: e42d01dec9bad5d4272c3062891d4fdfd7b9d396e59793c83e3ca2d40b9d1ec6
+    keywords:
+    - kubernetes
+    - platform
+    - cluster-admin
+    - storage
+    - rbac
+    - networking
+    maintainers:
+    - email: platform@company.com
+      name: Platform Team
+    name: platform-extensions
+    sources:
+    - https://github.com/company/synkube-charts
+    type: application
+    urls:
+    - https://github.com/synkube/charts/releases/download/platform-extensions-1.0.0/platform-extensions-1.0.0.tgz
+    version: 1.0.0
+generated: "2026-01-04T04:04:22.318015936Z"
