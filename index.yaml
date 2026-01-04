@@ -26,6 +26,21 @@ entries:
     urls:
     - https://github.com/synkube/charts/releases/download/app-extensions-1.0.0/app-extensions-1.0.0.tgz
     version: 1.0.0
+  app-starter:
+  - apiVersion: v2
+    appVersion: "1.0"
+    created: "2026-01-04T07:43:30.561121787Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      version: 1.0.0
+    description: A streamlined, extensible Helm chart for deploying applications on
+      Kubernetes
+    digest: f1c06894fee5464a2a62186e446c3315f1e1d97f3bef528c7cb0256208f893fa
+    name: app-starter
+    urls:
+    - https://github.com/synkube/charts/releases/download/app-starter-1.0.0/app-starter-1.0.0.tgz
+    version: 1.0.0
   common:
   - annotations:
       category: Infrastructure
@@ -79,4 +94,4 @@ entries:
     urls:
     - https://github.com/synkube/charts/releases/download/platform-extensions-1.0.0/platform-extensions-1.0.0.tgz
     version: 1.0.0
-generated: "2026-01-04T04:04:22.318015936Z"
+generated: "2026-01-04T07:43:31.107759155Z"
