@@ -1,0 +1,28 @@
+apiVersion: v1
+entries:
+  common:
+  - annotations:
+      category: Infrastructure
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-04T04:00:33.410748891Z"
+    description: A library chart for synkube extension charts providing common utilities
+      and functions
+    digest: 595a71b24425569403fd238f3bc4b17ca0b01a9929e42282a45f420e2484d2b3
+    home: https://github.com/synkube/synkube-charts
+    keywords:
+    - common
+    - library
+    - synkube
+    - utilities
+    maintainers:
+    - email: platform@company.com
+      name: Platform Team
+    name: common
+    sources:
+    - https://github.com/synkube/synkube-charts
+    type: library
+    urls:
+    - https://github.com/synkube/charts/releases/download/common-1.0.0/common-1.0.0.tgz
+    version: 1.0.0
+generated: "2026-01-04T04:00:33.410759761Z"
