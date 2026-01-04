@@ -244,15 +244,35 @@ jobs:
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
-      # chart-releaser creates GitHub releases and updates gh-pages branch with index.yaml
-      # Requires GitHub Pages configured to deploy from gh-pages branch (not Actions)
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.6.0
-        env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        with:
-          charts_dir: charts
-          skip_existing: true
+      # Package all charts and generate index.yaml (no GitHub Releases)
+      - name: Package charts
+        run: |
+          mkdir -p .chart-packages
+          for chart in charts/*/; do
+            if [ -f "$chart/Chart.yaml" ]; then
+              echo "📦 Packaging $chart"
+              helm dependency build "$chart" --skip-refresh 2>/dev/null || true
+              helm package "$chart" -d .chart-packages
+            fi
+          done
+
+      - name: Generate index and push to gh-pages
+        run: |
+          git fetch origin gh-pages:gh-pages || git checkout --orphan gh-pages
+          git checkout gh-pages
+
+          # Copy new packages
+          cp .chart-packages/*.tgz . 2>/dev/null || true
+
+          # Generate/update index
+          helm repo index . --url https://${{ env.ORG_NAME }}.github.io/${{ env.REPO_NAME }}
+
+          # Commit and push
+          git add .
+          git commit -m "Update Helm charts" || echo "No changes to commit"
+          git push origin gh-pages
+
+          git checkout main
 
       - name: Pages Summary
         run: |
