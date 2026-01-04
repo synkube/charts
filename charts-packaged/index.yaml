@@ -1,0 +1,82 @@
+apiVersion: v1
+entries:
+  app-extensions:
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-04T01:53:30.265769053Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      version: 1.0.0
+    description: Namespace-scoped Kubernetes resources for application teams
+    digest: 6c51985a465e974ff3496ccca533658446b83660cb75c4fd697c2e220ef09247
+    keywords:
+    - kubernetes
+    - extensions
+    - secrets
+    - rbac
+    - storage
+    maintainers:
+    - email: platform@company.com
+      name: Platform Team
+    name: app-extensions
+    sources:
+    - https://github.com/company/synkube-charts
+    type: application
+    urls:
+    - https://synkube.github.io/charts/charts-packaged/app-extensions-1.0.0.tgz
+    version: 1.0.0
+  common:
+  - annotations:
+      category: Infrastructure
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-04T01:53:30.265992618Z"
+    description: A library chart for synkube extension charts providing common utilities
+      and functions
+    digest: 2991ff11407abd61ca70b8ec91a0b1bce295910a55ff7fa7e4e313320732ccb8
+    home: https://github.com/synkube/synkube-charts
+    keywords:
+    - common
+    - library
+    - synkube
+    - utilities
+    maintainers:
+    - email: platform@company.com
+      name: Platform Team
+    name: common
+    sources:
+    - https://github.com/synkube/synkube-charts
+    type: library
+    urls:
+    - https://synkube.github.io/charts/charts-packaged/common-1.0.0.tgz
+    version: 1.0.0
+  platform-extensions:
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-04T01:53:30.266594228Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      version: 1.0.0
+    description: Cluster-scoped Kubernetes resources for platform teams (requires
+      cluster-admin)
+    digest: 32d627cc91286c31bbbcc0b2199d2b44e6a3589a4a36234df6a1da0b50cd26fb
+    keywords:
+    - kubernetes
+    - platform
+    - cluster-admin
+    - storage
+    - rbac
+    - networking
+    maintainers:
+    - email: platform@company.com
+      name: Platform Team
+    name: platform-extensions
+    sources:
+    - https://github.com/company/synkube-charts
+    type: application
+    urls:
+    - https://synkube.github.io/charts/charts-packaged/platform-extensions-1.0.0.tgz
+    version: 1.0.0
+generated: "2026-01-04T01:53:30.265044073Z"
