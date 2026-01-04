@@ -93,7 +93,7 @@ jobs:
             echo "has-changes=true" >> $GITHUB_OUTPUT
           fi
 
-  test-charts:
+  test:
     runs-on: ubuntu-latest
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.has-changes == 'true' }}
@@ -156,10 +156,10 @@ jobs:
           path: charts/${{ matrix.chart }}/${{ matrix.chart }}-${{ env.CHART_VERSION }}.tgz
           retention-days: 1
 
-  publish-charts:
+  publish-oci:
     runs-on: ubuntu-latest
-    needs: [detect-changes, test-charts]
-    if: ${{ needs.detect-changes.outputs.has-changes == 'true' && needs.test-charts.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [detect-changes, test]
+    if: ${{ needs.detect-changes.outputs.has-changes == 'true' && needs.test.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     strategy:
       fail-fast: false
       matrix:
@@ -218,8 +218,8 @@ jobs:
 
   publish-pages:
     runs-on: ubuntu-latest
-    needs: [detect-changes, publish-charts]
-    if: ${{ always() && needs.publish-charts.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [detect-changes, publish-oci]
+    if: ${{ always() && needs.publish-oci.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     permissions:
       contents: write # Required for chart-releaser to push to gh-pages branch
 
@@ -229,6 +229,7 @@ jobs:
           fetch-depth: 0
 
       - uses: azure/setup-helm@v4.3.1
+      - uses: mikefarah/yq@v4.32.2
 
       - name: Get repository info
         run: |
@@ -244,25 +245,28 @@ jobs:
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
-      # Package all charts and generate index.yaml (no GitHub Releases)
-      - name: Package charts
+      # Delete existing releases to allow overwrite
+      - name: Delete existing releases
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p charts-packaged
           for chart in charts/*/; do
             if [ -f "$chart/Chart.yaml" ]; then
-              echo "📦 Packaging $chart"
-              helm dependency build "$chart" --skip-refresh 2>/dev/null || true
-              helm package "$chart" -d charts-packaged
+              chart_name=$(basename "$chart")
+              version=$(yq '.version' "$chart/Chart.yaml")
+              release_name="${chart_name}-${version}"
+              echo "🗑️ Deleting release $release_name (if exists)"
+              gh release delete "$release_name" --yes 2>/dev/null || true
+              git push --delete origin "$release_name" 2>/dev/null || true
             fi
           done
-          helm repo index charts-packaged --url https://${{ env.ORG_NAME }}.github.io/${{ env.REPO_NAME }}/charts-packaged
 
-      - name: Deploy to gh-pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.7.0
+        env:
+          CR_TOKEN: ${{ github.token }}
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./charts-packaged
-          destination_dir: charts-packaged
+          charts_dir: charts
 
       - name: Pages Summary
         run: |
