@@ -52,6 +52,16 @@ jobs:
           modified_files=(${{ env.MODIFIED_FILES }})
           echo "Modified files: ${modified_files[@]}"
 
+          # Check if common chart was changed
+          common_changed=false
+          for file in "${modified_files[@]}"; do
+            if [[ $file =~ charts\/common/.* ]]; then
+              common_changed=true
+              echo "⚠️ Common chart changed - will trigger all dependent charts"
+              break
+            fi
+          done
+
           # Find changed charts
           changed_charts=()
           for chart in "${charts_dirs[@]}"; do
@@ -64,6 +74,14 @@ jobs:
           done
 
           echo "Changed charts: ${changed_charts[@]}"
+
+          # If common chart changed, include all charts
+          if [ "$common_changed" = true ]; then
+            echo "🔄 Common changed - adding all charts"
+            changed_charts=("${charts_dirs[@]}")
+          fi
+
+          echo "Final charts to process: ${changed_charts[@]}"
 
           # Create JSON output
           if [ ${#changed_charts[@]} -eq 0 ]; then
