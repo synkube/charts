@@ -1,24 +1,73 @@
 # Synkube Charts
 
-Helm charts for Kubernetes platform and application extensions.
+Reusable Helm charts for Kubernetes platform and application deployments.
 
 ## Charts
 
-### app-extensions
-Namespace-scoped resources for application teams. Safe resources that cannot escalate privileges.
+| Chart | Description | Scope |
+|-------|-------------|-------|
+| **app-starter** | Streamlined chart for deploying applications (Deployments, StatefulSets, CronJobs, Services, Ingress, etc.) | Namespace |
+| **app-extensions** | Additional namespace-scoped resources (Secrets, ConfigMaps, RBAC, NetworkPolicies) | Namespace |
+| **platform-extensions** | Cluster-scoped resources (ClusterRoles, ClusterSecretStores, Certificates) | Cluster |
+| **common** | Library chart with shared helper functions | Library |
 
-### platform-extensions
-Cluster-scoped resources for platform teams. Requires cluster-admin permissions.
+## Installation
 
-## Usage
+### Option 1: GitHub Pages Repository
+
+URL: https://synkube.github.io/charts
 
 ```bash
-# Add this repository
-helm repo add synkube ./
+# Add the Helm repository
+helm repo add synkube https://synkube.github.io/charts
+helm repo update
 
-# Install app extensions (namespace-scoped)
-helm install myapp-ext synkube/app-extensions -f values.yaml
+# Search available charts
+helm search repo synkube
 
-# Install platform extensions (cluster-admin required)
-helm install platform synkube/platform-extensions -f platform-values.yaml
+# Install a chart
+helm install myapp synkube/app-starter -f values.yaml --version 1.0.0
+```
+
+### Option 2: OCI Registry
+
+```bash
+# Pull chart from OCI registry
+helm pull oci://ghcr.io/synkube/charts/app-starter --version 1.0.0
+
+# Install directly from OCI
+helm install myapp oci://ghcr.io/synkube/charts/app-starter --version 1.0.0 -f values.yaml
+```
+
+## Quick Start Examples
+
+### Deploy a Web Application
+
+```yaml
+# values.yaml
+image:
+  repository: nginx
+  tag: "1.25"
+
+container:
+  ports:
+    - name: http
+      containerPort: 80
+
+service:
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: myapp.example.com
+      paths: ["/"]
+```
+
+```bash
+helm install myapp synkube/app-starter -f values.yaml
 ```
