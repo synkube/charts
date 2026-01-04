@@ -252,6 +252,7 @@ jobs:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         with:
           charts_dir: charts
+          skip_existing: true
 
       - name: Pages Summary
         run: |
