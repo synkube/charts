@@ -1,0 +1,9 @@
+# Artifact Hub repository metadata
+# See: https://artifacthub.io/docs/topics/repositories/helm-charts/
+
+# This file should be placed in the root of your Helm repository
+# (the directory that contains index.yaml when using GitHub Pages)
+
+repositoryID: # Will be generated when you add the repository to Artifact Hub
+owners:
+  - name: bsgrigorov

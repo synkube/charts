@@ -1,5 +1,9 @@
 # Synkube Charts
 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/synkube)](https://artifacthub.io/packages/search?repo=synkube)
+[![Helm Version](https://img.shields.io/badge/Helm-v3.x-blue)](https://helm.sh)
+
 Reusable Helm charts for Kubernetes platform and application deployments.
 
 ## Charts

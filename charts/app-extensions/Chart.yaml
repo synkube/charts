@@ -4,18 +4,26 @@ description: Namespace-scoped Kubernetes resources for application teams
 type: application
 version: 1.0.0
 appVersion: "1.0.0"
+kubeVersion: ">=1.22.0-0"
+home: https://github.com/synkube/synkube-charts
+sources:
+  - https://github.com/synkube/synkube-charts
+icon: https://raw.githubusercontent.com/synkube/.github/main/assets/synkube-logo-256.jpg
 keywords:
-  - kubernetes
   - extensions
-  - secrets
+  - one-chart-to-extend-them-all
+  - networking
   - rbac
-  - storage
+  - universal
+  - secrets
+  - configmaps
+  - serviceaccounts
 maintainers:
-  - name: Platform Team
-    email: platform@company.com
+  - name: bsgrigorov
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/category: integration-delivery
 dependencies:
   - name: common
     version: "1.0.0"
     repository: "file://../common"
-sources:
-  - https://github.com/company/synkube-charts
