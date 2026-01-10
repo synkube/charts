@@ -112,7 +112,14 @@ helm install myapp synkube/app-starter -f values.yaml</code></pre>
         tbody.innerHTML = '';
 
         const entries = data.entries || {};
-        const chartNames = Object.keys(entries).sort();
+        let chartNames = Object.keys(entries).sort();
+
+        // Move 'app-starter' to front if present
+        const appStarterIndex = chartNames.indexOf('app-starter');
+        if (appStarterIndex > -1) {
+          chartNames.splice(appStarterIndex, 1);
+          chartNames.unshift('app-starter');
+        }
 
         for (const name of chartNames) {
           const versions = entries[name];
