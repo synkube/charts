@@ -1,7 +1,11 @@
 # Patterns to ignore when building packages.
 # This supports shell glob matching, relative path matching, and
-# negation (prefixed with !). Only one pattern per line.
-.DS_Store
+# temporary file patterns.
+
+# Test files
+test-values/
+.test-output/
+
 # Common VCS dirs
 .git/
 .gitignore
@@ -10,20 +14,20 @@
 .hg/
 .hgignore
 .svn/
+
 # Common backup files
 *.swp
 *.bak
 *.tmp
+*.orig
 *~
-# Various IDEs
+
+# Editor/IDE files
 .project
 .idea/
 *.tmproj
 .vscode/
-# Custom
-example-sops-encrypted-secrets.yaml
-test-values/
-test-render.sh
-.test-output/
-CLEANUP_SUMMARY.md
-*.md
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -28,6 +28,11 @@ maintainers:
 annotations:
   artifacthub.io/license: Apache-2.0
   artifacthub.io/category: integration-delivery
+  artifacthub.io/links: |
+    - name: Source
+      url: https://github.com/synkube/charts/tree/main/charts/app-starter
+    - name: Homepage
+      url: https://github.com/synkube/
 
 dependencies:
   - name: common
