@@ -2,12 +2,12 @@ apiVersion: v2
 name: platform-extensions
 description: Cluster-scoped Kubernetes resources for platform teams (requires cluster-admin)
 type: application
-version: 1.2.0
+version: 1.2.1
 appVersion: "1.0.0"
 kubeVersion: ">=1.22.0-0"
-home: https://github.com/synkube/charts
+home: https://github.com/synkube/
 sources:
-  - https://github.com/synkube/charts
+  - https://github.com/synkube/charts/tree/main/charts/platform-extensions
 icon: https://raw.githubusercontent.com/synkube/.github/main/assets/synkube-logo-256.jpg
 keywords:
   - platform
@@ -27,11 +27,6 @@ maintainers:
 annotations:
   artifacthub.io/license: Apache-2.0
   artifacthub.io/category: integration-delivery
-  artifacthub.io/links: |
-    - name: Source
-      url: https://github.com/synkube/charts/tree/main/charts/platform-extensions
-    - name: Homepage
-      url: https://github.com/synkube/
 dependencies:
   - name: common
     version: "1.0.0"
