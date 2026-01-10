@@ -1,10 +1,14 @@
 # Synkube Charts
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Chart Repository](https://img.shields.io/badge/Chart%20Repository-Synkube-purple)](https://synkube.github.io/charts/)
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/synkube)](https://artifacthub.io/packages/search?repo=synkube)
-[![Helm Version](https://img.shields.io/badge/Helm-v3.x-blue)](https://helm.sh)
+[![Version](https://img.shields.io/badge/Version-1.1.0-green)](https://github.com/synkube/charts/releases/tag/v1.1.0)
 
 Reusable Helm charts for Kubernetes platform and application deployments.
+
+## app-starter - The One Chart to Rule Them All
+General purpose chart for deploying applications on Kubernetes. You can run 99% of applications with this one chart.
+It supports a wide range of deployment patterns from simple web applications to complex stateful services with sidecars, migrations, and scheduled jobs.
 
 ## Charts
 

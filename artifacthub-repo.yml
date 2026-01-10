@@ -4,6 +4,6 @@
 # This file should be placed in the root of your Helm repository
 # (the directory that contains index.yaml when using GitHub Pages)
 
-repositoryID: # Will be generated when you add the repository to Artifact Hub
+repositoryID: c37a4230-d32d-4ca2-9d93-d734a9ad0954
 owners:
   - name: bsgrigorov
