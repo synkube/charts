@@ -6,6 +6,9 @@
 test-values/
 .test-output/
 
+# Documentation (README.md is kept, full docs excluded)
+docs/
+
 # Common VCS dirs
 .git/
 .gitignore
