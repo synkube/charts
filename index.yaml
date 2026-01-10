@@ -4,6 +4,39 @@ entries:
   - annotations:
       artifacthub.io/category: integration-delivery
       artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-10T11:01:40.946788775Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      version: 1.0.0
+    description: Namespace-scoped Kubernetes resources for application teams
+    digest: 7e4cb12577d5bff88dc86819c0018afa326b484b759f829646b1bf6e0f3ab719
+    home: https://github.com/synkube/
+    icon: https://raw.githubusercontent.com/synkube/.github/main/assets/synkube-logo-256.jpg
+    keywords:
+    - extensions
+    - one-chart-to-extend-them-all
+    - networking
+    - rbac
+    - universal
+    - secrets
+    - configmaps
+    - serviceaccounts
+    kubeVersion: '>=1.22.0-0'
+    maintainers:
+    - name: bsgrigorov
+    name: app-extensions
+    sources:
+    - https://github.com/synkube/charts/tree/main/charts/app-extensions
+    type: application
+    urls:
+    - https://github.com/synkube/charts/releases/download/app-extensions-1.2.1/app-extensions-1.2.1.tgz
+    version: 1.2.1
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/license: Apache-2.0
       artifacthub.io/links: |
         - name: Source
           url: https://github.com/synkube/charts/tree/main/charts/app-extensions
@@ -98,6 +131,45 @@ entries:
     - https://github.com/synkube/charts/releases/download/app-extensions-1.0.0/app-extensions-1.0.0.tgz
     version: 1.0.0
   app-starter:
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-10T11:01:41.096819182Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      version: 1.0.0
+    description: A streamlined, extensible Helm chart for deploying applications on
+      Kubernetes
+    digest: 82c4d4b9a3f59e09febf1b480ea242415c9482eb56f0c2c0b3818fd7376f7360
+    home: https://github.com/synkube/
+    icon: https://raw.githubusercontent.com/synkube/.github/main/assets/synkube-logo-256.jpg
+    keywords:
+    - app-starter
+    - extensible
+    - one-chart-to-rule-them-all
+    - generic-app
+    - deployment
+    - statefulset
+    - cronjob
+    - ingress
+    - universal
+    - boilerplate
+    - workloads
+    - autoscaling
+    - gateway-api
+    kubeVersion: '>=1.22.0-0'
+    maintainers:
+    - name: bsgrigorov
+    name: app-starter
+    sources:
+    - https://github.com/synkube/charts/tree/main/charts/app-starter
+    type: application
+    urls:
+    - https://github.com/synkube/charts/releases/download/app-starter-1.2.2/app-starter-1.2.2.tgz
+    version: 1.2.2
   - annotations:
       artifacthub.io/category: integration-delivery
       artifacthub.io/license: Apache-2.0
@@ -268,6 +340,44 @@ entries:
   - annotations:
       artifacthub.io/category: integration-delivery
       artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-10T11:01:41.229087069Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      version: 1.0.0
+    description: Cluster-scoped Kubernetes resources for platform teams (requires
+      cluster-admin)
+    digest: a162f17176cb3de8337efe14b26c78cbbe585e0ece659c308539a7256aea7371
+    home: https://github.com/synkube/
+    icon: https://raw.githubusercontent.com/synkube/.github/main/assets/synkube-logo-256.jpg
+    keywords:
+    - platform
+    - extensions
+    - one-chart-to-extend-them-all
+    - cluster-resources
+    - external-secrets
+    - sealed-secrets
+    - cert-manager
+    - cluster-issuer
+    - certificates
+    - networking
+    - rbac
+    - universal
+    kubeVersion: '>=1.22.0-0'
+    maintainers:
+    - name: bsgrigorov
+    name: platform-extensions
+    sources:
+    - https://github.com/synkube/charts/tree/main/charts/platform-extensions
+    type: application
+    urls:
+    - https://github.com/synkube/charts/releases/download/platform-extensions-1.2.1/platform-extensions-1.2.1.tgz
+    version: 1.2.1
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/license: Apache-2.0
       artifacthub.io/links: |
         - name: Source
           url: https://github.com/synkube/charts/tree/main/charts/platform-extensions
@@ -373,4 +483,4 @@ entries:
     urls:
     - https://github.com/synkube/charts/releases/download/platform-extensions-1.0.0/platform-extensions-1.0.0.tgz
     version: 1.0.0
-generated: "2026-01-10T10:53:16.818720245Z"
+generated: "2026-01-10T11:01:41.229163903Z"
