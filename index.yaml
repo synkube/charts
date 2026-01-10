@@ -1,6 +1,39 @@
 apiVersion: v1
 entries:
   app-extensions:
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-10T06:45:14.826323428Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      version: 1.0.0
+    description: Namespace-scoped Kubernetes resources for application teams
+    digest: a5aeb7522cdb50de7e858f2b6f84f3292afdf28269fae8670dab2eb7eea86d32
+    home: https://github.com/synkube/charts
+    icon: https://raw.githubusercontent.com/synkube/.github/main/assets/synkube-logo-256.jpg
+    keywords:
+    - extensions
+    - one-chart-to-extend-them-all
+    - networking
+    - rbac
+    - universal
+    - secrets
+    - configmaps
+    - serviceaccounts
+    kubeVersion: '>=1.22.0-0'
+    maintainers:
+    - name: bsgrigorov
+    name: app-extensions
+    sources:
+    - https://github.com/synkube/charts
+    type: application
+    urls:
+    - https://github.com/synkube/charts/releases/download/app-extensions-1.1.0/app-extensions-1.1.0.tgz
+    version: 1.1.0
   - apiVersion: v2
     appVersion: 1.0.0
     created: "2026-01-04T04:04:21.616660737Z"
@@ -27,6 +60,45 @@ entries:
     - https://github.com/synkube/charts/releases/download/app-extensions-1.0.0/app-extensions-1.0.0.tgz
     version: 1.0.0
   app-starter:
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-10T06:45:14.983090381Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      version: 1.0.0
+    description: A streamlined, extensible Helm chart for deploying applications on
+      Kubernetes
+    digest: 3fafa51cc1c89097f0afcafea7ae607309fd7eb07c647ed546aefc9ee110d78e
+    home: https://github.com/synkube/charts
+    icon: https://raw.githubusercontent.com/synkube/.github/main/assets/synkube-logo-256.jpg
+    keywords:
+    - app-starter
+    - extensible
+    - one-chart-to-rule-them-all
+    - generic-app
+    - deployment
+    - statefulset
+    - cronjob
+    - ingress
+    - universal
+    - boilerplate
+    - workloads
+    - autoscaling
+    - gateway-api
+    kubeVersion: '>=1.22.0-0'
+    maintainers:
+    - name: bsgrigorov
+    name: app-starter
+    sources:
+    - https://github.com/synkube/charts
+    type: application
+    urls:
+    - https://github.com/synkube/charts/releases/download/app-starter-1.1.0/app-starter-1.1.0.tgz
+    version: 1.1.0
   - apiVersion: v2
     appVersion: "1.0"
     created: "2026-01-04T07:43:30.561121787Z"
@@ -67,6 +139,44 @@ entries:
     - https://github.com/synkube/charts/releases/download/common-1.0.0/common-1.0.0.tgz
     version: 1.0.0
   platform-extensions:
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.0.0
+    created: "2026-01-10T06:45:15.273267117Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      version: 1.0.0
+    description: Cluster-scoped Kubernetes resources for platform teams (requires
+      cluster-admin)
+    digest: df51587688ea67942281981ba73e2b380cec1f0f26515df9ce662309417b052c
+    home: https://github.com/synkube/charts
+    icon: https://raw.githubusercontent.com/synkube/.github/main/assets/synkube-logo-256.jpg
+    keywords:
+    - platform
+    - extensions
+    - one-chart-to-extend-them-all
+    - cluster-resources
+    - external-secrets
+    - sealed-secrets
+    - cert-manager
+    - cluster-issuer
+    - certificates
+    - networking
+    - rbac
+    - universal
+    kubeVersion: '>=1.22.0-0'
+    maintainers:
+    - name: bsgrigorov
+    name: platform-extensions
+    sources:
+    - https://github.com/synkube/charts
+    type: application
+    urls:
+    - https://github.com/synkube/charts/releases/download/platform-extensions-1.1.0/platform-extensions-1.1.0.tgz
+    version: 1.1.0
   - apiVersion: v2
     appVersion: 1.0.0
     created: "2026-01-04T04:04:22.318010837Z"
@@ -94,4 +204,4 @@ entries:
     urls:
     - https://github.com/synkube/charts/releases/download/platform-extensions-1.0.0/platform-extensions-1.0.0.tgz
     version: 1.0.0
-generated: "2026-01-04T07:43:31.107759155Z"
+generated: "2026-01-10T06:45:15.273281624Z"
