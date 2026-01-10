@@ -4,9 +4,9 @@ description: A library chart for synkube extension charts providing common utili
 type: library
 version: 1.0.0
 appVersion: "1.0.0"
-home: https://github.com/synkube/synkube-charts
+home: https://github.com/synkube/charts
 sources:
-  - https://github.com/synkube/synkube-charts
+  - https://github.com/synkube/charts
 icon: https://raw.githubusercontent.com/synkube/.github/main/assets/synkube-logo-256.jpg
 keywords:
   - library

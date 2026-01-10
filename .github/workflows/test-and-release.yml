@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_all:
+        description: "Release all charts (skip change detection)"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -27,12 +34,15 @@ jobs:
 
       - name: Get changed files
         id: changes
+        if: ${{ github.event_name != 'workflow_dispatch' }}
         uses: tj-actions/changed-files@v44
 
       - name: Detect changed charts
         id: matrix
         env:
           MODIFIED_FILES: ${{ steps.changes.outputs.all_modified_files }}
+          RELEASE_ALL: ${{ github.event.inputs.release_all }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -x
 
@@ -47,6 +57,15 @@ jobs:
           fi
 
           echo "Available charts: ${charts_dirs[@]}"
+
+          # If workflow_dispatch with release_all, return all charts
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "🚀 Manual dispatch - releasing all charts"
+            charts_output=$(jq -nc '[$ARGS.positional[]]' --args "${charts_dirs[@]}")
+            echo "charts=$charts_output" >> $GITHUB_OUTPUT
+            echo "has-changes=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
           # Parse modified files
           modified_files=(${{ env.MODIFIED_FILES }})
@@ -96,7 +115,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.has-changes == 'true' }}
+    if: ${{ needs.detect-changes.outputs.has-changes == 'true' || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
       matrix:
@@ -135,8 +154,8 @@ jobs:
         if: ${{ matrix.chart != 'common' }}
         run: |
           echo "🚀 Running comprehensive test suite for ${{ matrix.chart }}"
-          chmod +x ./test-render.sh
-          ./test-render.sh charts/${{ matrix.chart }}
+          chmod +x ./scripts/test-render.sh
+          ./scripts/test-render.sh charts/${{ matrix.chart }}
 
       - name: Skip test for library chart
         if: ${{ matrix.chart == 'common' }}
@@ -159,7 +178,7 @@ jobs:
   publish-oci:
     runs-on: ubuntu-latest
     needs: [detect-changes, test]
-    if: ${{ needs.detect-changes.outputs.has-changes == 'true' && needs.test.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    if: ${{ needs.detect-changes.outputs.has-changes == 'true' && needs.test.result == 'success' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
     strategy:
       fail-fast: false
       matrix:
@@ -219,7 +238,7 @@ jobs:
   publish-pages:
     runs-on: ubuntu-latest
     needs: [detect-changes, test]
-    if: ${{ always() && needs.test.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    if: ${{ always() && needs.test.result == 'success' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
     permissions:
       contents: write # Required for chart-releaser to push to gh-pages branch
 

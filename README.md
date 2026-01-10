@@ -17,9 +17,18 @@ Reusable Helm charts for Kubernetes platform and application deployments.
 
 ## Installation
 
-### Option 1: GitHub Pages Repository
+### Option 1: OCI Registry (Recommended)
 
-URL: https://synkube.github.io/charts
+```bash
+# Install directly from OCI
+helm install myapp oci://ghcr.io/synkube/charts/app-starter --version 1.1.0 -f values.yaml
+
+# Or pull first, then install
+helm pull oci://ghcr.io/synkube/charts/app-starter --version 1.1.0
+helm install myapp ./app-starter-1.1.0.tgz -f values.yaml
+```
+
+### Option 2: Helm Repository (GitHub Pages)
 
 ```bash
 # Add the Helm repository
@@ -30,17 +39,7 @@ helm repo update
 helm search repo synkube
 
 # Install a chart
-helm install myapp synkube/app-starter -f values.yaml --version 1.0.0
-```
-
-### Option 2: OCI Registry
-
-```bash
-# Pull chart from OCI registry
-helm pull oci://ghcr.io/synkube/charts/app-starter --version 1.0.0
-
-# Install directly from OCI
-helm install myapp oci://ghcr.io/synkube/charts/app-starter --version 1.0.0 -f values.yaml
+helm install myapp synkube/app-starter -f values.yaml
 ```
 
 ## Quick Start Examples
