@@ -123,10 +123,11 @@ helm install myapp synkube/app-starter -f values.yaml</code></pre>
           const isLibrary = latest.type === 'library';
 
           const isFeatured = name === 'app-starter';
+          const readmeUrl = `https://github.com/synkube/charts/tree/main/charts/${name}`;
           const row = document.createElement('tr');
           row.innerHTML = `
             <td>
-              <code>${name}</code>${isFeatured ? '<span class="star">⭐</span>' : ''}
+              <a href="${readmeUrl}"><code>${name}</code></a>${isFeatured ? '<span class="star">⭐</span>' : ''}
               ${isLibrary ? '<span class="badge library">library</span>' : ''}
             </td>
             <td class="version">${latest.version}</td>
@@ -142,10 +143,10 @@ helm install myapp synkube/app-starter -f values.yaml</code></pre>
         console.error('Failed to load charts:', error);
         // Show fallback table with static data
         tbody.innerHTML = `
-          <tr><td><code>app-starter</code><span class="star">⭐</span></td><td class="version">1.0.0</td><td>Deploy applications (Deployments, StatefulSets, Services, Ingress)</td></tr>
-          <tr><td><code>app-extensions</code></td><td class="version">1.0.0</td><td>Namespace-scoped resources for application teams</td></tr>
-          <tr><td><code>platform-extensions</code></td><td class="version">1.0.0</td><td>Cluster-scoped resources for platform teams</td></tr>
-          <tr><td><code>common</code><span class="badge library">library</span></td><td class="version">1.0.0</td><td>Shared utilities and helpers</td></tr>
+          <tr><td><a href="https://github.com/synkube/charts/tree/main/charts/app-starter"><code>app-starter</code></a><span class="star">⭐</span></td><td class="version">1.1.0</td><td>Deploy applications (Deployments, StatefulSets, Services, Ingress)</td></tr>
+          <tr><td><a href="https://github.com/synkube/charts/tree/main/charts/app-extensions"><code>app-extensions</code></a></td><td class="version">1.1.0</td><td>Namespace-scoped resources for application teams</td></tr>
+          <tr><td><a href="https://github.com/synkube/charts/tree/main/charts/platform-extensions"><code>platform-extensions</code></a></td><td class="version">1.1.0</td><td>Cluster-scoped resources for platform teams</td></tr>
+          <tr><td><a href="https://github.com/synkube/charts/tree/main/charts/common"><code>common</code></a><span class="badge library">library</span></td><td class="version">1.1.0</td><td>Shared utilities and helpers</td></tr>
         `;
       }
     }
