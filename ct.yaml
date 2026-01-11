@@ -1,0 +1,9 @@
+# chart-testing (ct) configuration
+# https://github.com/helm/chart-testing
+chart-dirs:
+  - charts
+target-branch: main
+validate-maintainers: false
+validate-chart-schema: true
+check-version-increment: false
+helm-extra-set-args: --set=global.skipApiCheck=true

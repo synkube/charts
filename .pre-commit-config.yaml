@@ -1,0 +1,38 @@
+---
+repos:
+  - repo: local
+    hooks:
+      - id: helm-lint
+        name: Helm Lint
+        entry: >
+          bash -c '
+          echo "🔍 Finding Helm charts...";
+          charts=$(find charts -name "Chart.yaml" -exec dirname {} \;);
+          if [ -z "$charts" ]; then echo "❌ No charts found!"; exit 1; fi;
+          exit_code=0;
+          while IFS= read -r chart; do
+            echo "📊 Linting: $chart";
+            if helm lint "$chart"; then
+              echo "✅ Passed: $chart";
+            else
+              echo "❌ Failed: $chart";
+              exit_code=1;
+            fi;
+          done <<< "$charts";
+          if [ $exit_code -eq 0 ]; then
+            echo "🎉 All charts linted successfully!";
+          else
+            echo "💥 Some charts failed linting!"; exit 1;
+          fi
+          '
+        language: system
+        files: ^charts/.*\.(yaml|yml|tpl)$
+        pass_filenames: false
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: check-yaml
+        exclude: ^charts/.*/templates/.*\.yaml$
+      - id: check-merge-conflict
