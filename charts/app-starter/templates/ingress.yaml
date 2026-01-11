@@ -1,5 +1,5 @@
-{{- if .Values.ingress.enabled -}}
 {{- $fullName := include "app-starter.fullname" . -}}
+{{- if .Values.ingress.enabled -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -43,4 +43,50 @@ spec:
           - {{- toYaml . | nindent 12 }}
           {{- end }}
   {{- end }}
+{{- end }}
+{{/* Extra Ingresses - for additional subdomains/endpoints */}}
+{{- range .Values.extraIngresses }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ printf "%s-%s" $fullName (.name | default (randAlphaNum 4 | lower)) }}
+  labels:
+{{ include "app-starter.labels" $ | indent 4 }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .className }}
+  ingressClassName: {{ .className }}
+  {{- else if $.Values.ingress.className }}
+  ingressClassName: {{ $.Values.ingress.className }}
+  {{- end }}
+  {{- if .tls }}
+  tls:
+    {{- range .tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ tpl . $ | quote }}
+        {{- end }}
+      secretName: {{ tpl .secretName $ }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .hosts }}
+    - host: {{ tpl .host $ | quote }}
+      http:
+        paths:
+          {{- $pathType := .pathType }}
+          {{- range .paths }}
+          - pathType: {{ default "Prefix" $pathType }}
+            path: {{ . | quote }}
+            backend:
+              service:
+                name: {{ $fullName }}
+                port:
+                  name: {{ $.Values.ingress.servicePortName | default "http" }}
+          {{- end }}
+    {{- end }}
 {{- end }}

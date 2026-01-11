@@ -186,9 +186,9 @@ container:
   #   - name: custom-volume
   #     emptyDir: {}
 
-# -- Additional sidecar containers
-additionalContainers: []
-# additionalContainers:
+# -- Extra sidecar containers
+extraContainers: []
+# extraContainers:
 #   - name: sidecar
 #     image: sidecar:latest
 #     ports:
@@ -264,6 +264,27 @@ service:
   #     targetPort: 9091
   #     name: metrics
 
+# Extra Services (for additional service types/configurations)
+# Use when you need different service types for the same app
+extraServices: []
+# extraServices:
+#   - name: external                # Creates service named: <fullname>-external
+#     type: LoadBalancer            # Different type from main service
+#     annotations:
+#       service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+#     labels:
+#       exposure: external
+#     ports:
+#       - port: 443
+#         targetPort: 8080
+#         name: https
+#   - name: metrics                 # Internal metrics endpoint
+#     type: ClusterIP
+#     ports:
+#       - port: 9090
+#         targetPort: 9090
+#         name: metrics
+
 # =============================================================================
 # INGRESS & GATEWAY CONFIGURATION
 # =============================================================================
@@ -292,6 +313,23 @@ ingress:
   #     hosts:
   #       - app.example.com
   #       - "{{ .Release.Name }}.example.com"  # Templated host
+
+# Extra Ingresses (for additional subdomains with different middleware/auth)
+# Use when you need different auth for browser vs API access
+extraIngresses: []
+# extraIngresses:
+#   - name: api                      # Creates ingress named: <fullname>-api
+#     annotations:
+#       traefik.ingress.kubernetes.io/router.middlewares: "network-api-basic-auth@kubernetescrd"
+#     hosts:
+#       - host: "{{ .Release.Name }}-api.example.com"
+#         pathType: Prefix
+#         paths:
+#           - /
+#     tls:
+#       - secretName: "{{ .Release.Name }}-api-tls"
+#         hosts:
+#           - "{{ .Release.Name }}-api.example.com"
 
 # Gateway API (next-generation Ingress)
 # Requires Gateway API CRDs: https://gateway-api.sigs.k8s.io/
@@ -337,6 +375,40 @@ gateway:
   #           add:
   #             - name: X-Custom
   #               value: value
+
+# Extra HTTPRoutes (for additional routes with different rules/filters)
+# Use when you need different routing rules or filters for the same app
+extraHTTPRoutes: []
+# extraHTTPRoutes:
+#   - name: api                     # Creates HTTPRoute named: <fullname>-api
+#     annotations:
+#       gateway.networking.k8s.io/rate-limit: "100"
+#     hostnames:
+#       - "{{ .Release.Name }}-api.example.com"
+#     rules:
+#       - matches:
+#           - path:
+#               type: PathPrefix
+#               value: /api
+#         filters:
+#           - type: RequestHeaderModifier
+#             requestHeaderModifier:
+#               add:
+#                 - name: X-API-Version
+#                   value: "v2"
+#   - name: webhooks                # Different timeouts for webhooks
+#     parentRefs:                   # Override parentRefs for this route
+#       - name: external-gateway
+#         namespace: gateway-system
+#     hostnames:
+#       - webhooks.example.com
+#     rules:
+#       - matches:
+#           - path:
+#               type: Exact
+#               value: /webhook
+#         timeouts:
+#           request: 60s
 
 # =============================================================================
 # STORAGE & CONFIGURATION

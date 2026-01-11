@@ -1,4 +1,4 @@
-# Test 8: Advanced Gateway API with traffic splitting and timeouts
+# Test 8: Advanced Gateway API with traffic splitting, timeouts, and extraHTTPRoutes
 replicaCount: 2
 
 image:
@@ -79,3 +79,39 @@ resources:
     cpu: 500m
     memory: 512Mi
 
+# Extra HTTPRoutes (for additional routes with different rules)
+extraHTTPRoutes:
+  - name: webhooks
+    annotations:
+      gateway.networking.k8s.io/rate-limit: "1000"
+    hostnames:
+      - webhooks.example.com
+    rules:
+      - matches:
+          - path:
+              type: Exact
+              value: /webhook/github
+          - path:
+              type: Exact
+              value: /webhook/slack
+        timeouts:
+          request: 60s
+          backendRequest: 55s
+
+  - name: internal-api
+    parentRefs:  # Override to use different gateway
+      - name: internal-gateway
+        namespace: gateway-system
+    hostnames:
+      - internal-api.local
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /internal
+        filters:
+          - type: RequestHeaderModifier
+            requestHeaderModifier:
+              add:
+                - name: X-Internal
+                  value: "true"

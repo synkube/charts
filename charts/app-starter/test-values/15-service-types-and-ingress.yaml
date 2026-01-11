@@ -1,5 +1,5 @@
 # Test case: Different service types and ingress configurations
-# Tests: LoadBalancer service, ingress className, multiple ingress paths
+# Tests: LoadBalancer service, ingress className, multiple ingress paths, extraIngresses, extraServices
 
 deployment:
   enabled: true
@@ -63,3 +63,54 @@ ingress:
       hosts:
         - admin.example.com
 
+# Extra Ingresses (for subdomains with different middleware/auth)
+extraIngresses:
+  - name: api
+    annotations:
+      nginx.ingress.kubernetes.io/auth-type: basic
+      nginx.ingress.kubernetes.io/auth-secret: api-auth
+      nginx.ingress.kubernetes.io/auth-realm: "API Authentication"
+    hosts:
+      - host: api.example.com
+        pathType: Prefix
+        paths:
+          - /v1
+          - /v2
+    tls:
+      - secretName: api-example-com-tls
+        hosts:
+          - api.example.com
+
+  - name: webhooks
+    className: "traefik"  # Override className for this ingress
+    annotations:
+      traefik.ingress.kubernetes.io/router.middlewares: "network-rate-limit@kubernetescrd"
+    hosts:
+      - host: "{{ .Release.Name }}-webhooks.example.com"  # Templated hostname
+        pathType: Exact
+        paths:
+          - /webhook
+    tls:
+      - secretName: "{{ .Release.Name }}-webhooks-tls"
+        hosts:
+          - "{{ .Release.Name }}-webhooks.example.com"
+
+# Extra Services (for additional service configurations)
+extraServices:
+  - name: external
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    labels:
+      exposure: external
+    ports:
+      - port: 443
+        targetPort: 8080
+        name: https
+
+  - name: metrics
+    type: ClusterIP
+    ports:
+      - port: 9090
+        targetPort: 8081
+        name: metrics

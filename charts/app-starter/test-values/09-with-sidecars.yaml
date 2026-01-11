@@ -55,7 +55,7 @@ container:
       emptyDir: {}
 
 # Additional sidecar containers
-additionalContainers:
+extraContainers:
   - name: log-shipper
     image: fluent/fluent-bit:latest
     env:

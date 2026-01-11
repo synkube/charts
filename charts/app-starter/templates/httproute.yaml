@@ -55,3 +55,63 @@ spec:
 # Install Gateway API CRDs to use HTTPRoute resources
 # https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api
 {{- end }}
+{{/* Extra HTTPRoutes - for additional routes with different rules/filters */}}
+{{- range .Values.extraHTTPRoutes }}
+{{- if (include "common.hasApi" (list "gateway.networking.k8s.io/v1/HTTPRoute" $)) }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ printf "%s-%s" (include "app-starter.fullname" $) (.name | default (randAlphaNum 4 | lower)) }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+{{ include "app-starter.labels" $ | indent 4 }}
+spec:
+  {{- if .parentRefs }}
+  parentRefs:
+    {{- toYaml .parentRefs | nindent 4 }}
+  {{- else if $.Values.gateway.parentRefs }}
+  parentRefs:
+    {{- toYaml $.Values.gateway.parentRefs | nindent 4 }}
+  {{- end }}
+  {{- if .hostnames }}
+  hostnames:
+    {{- range .hostnames }}
+    - {{ tpl . $ }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .rules }}
+    - matches:
+        {{- toYaml .matches | nindent 8 }}
+      {{- with .filters }}
+      filters:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .timeouts }}
+      timeouts:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .backendRefs }}
+      backendRefs:
+        {{- range .backendRefs }}
+        - name: {{ .name | default (include "app-starter.fullname" $) }}
+          port: {{ .port | default $.Values.gateway.servicePort | default 80 }}
+          {{- with .weight }}
+          weight: {{ . }}
+          {{- end }}
+          {{- with .namespace }}
+          namespace: {{ . }}
+          {{- end }}
+        {{- end }}
+      {{- else }}
+      backendRefs:
+        - name: {{ include "app-starter.fullname" $ }}
+          port: {{ $.Values.gateway.servicePort | default 80 }}
+      {{- end }}
+    {{- end }}
+{{- end }}
+{{- end }}
