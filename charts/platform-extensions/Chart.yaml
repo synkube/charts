@@ -2,7 +2,7 @@ apiVersion: v2
 name: platform-extensions
 description: Cluster-scoped Kubernetes resources for platform teams (requires cluster-admin)
 type: application
-version: 1.2.1
+version: 1.3.0
 appVersion: "1.0.0"
 kubeVersion: ">=1.22.0-0"
 home: https://github.com/synkube/

@@ -13,20 +13,85 @@ clusterSecretStores: {}
   #     infisical:
   #       auth:
   #         universalAuthCredentials:
-  #           secretsPath: "/k8s/platform"
   #           clientId:
-  #             secretRef:
-  #               secretName: infisical-auth
-  #               key: clientId
+  #             key: clientId
+  #             namespace: argocd
+  #             name: infisical-auth
   #           clientSecret:
-  #             secretRef:
-  #               secretName: infisical-auth
-  #               key: clientSecret
-  #       hostAPI: "https://app.infisical.com/api"
-  #   conditions:
-  #     - namespaceSelector:
-  #         matchLabels:
-  #           platform-secrets: "enabled"
+  #             key: clientSecret
+  #             namespace: argocd
+  #             name: infisical-auth
+  #       hostAPI: "https://app.infisical.com"
+  #       secretsScope:
+  #         projectSlug: "my-project"
+  #         environmentSlug: "prod"
+  #         secretsPath: "/k8s/platform"
+  #         recursive: true
+
+# External Secrets - Platform-wide secrets synced from external providers
+# These create secrets in specific namespaces for platform services
+externalSecrets: {}
+  # oauth2-proxy-credentials:
+  #   namespace: network
+  #   refreshInterval: "5m"
+  #   secretStoreRef:
+  #     name: infisical-platform
+  #     kind: ClusterSecretStore
+  #   target:
+  #     name: oauth2-proxy-credentials
+  #     creationPolicy: Owner
+  #   data:
+  #     - secretKey: client-id
+  #       remoteRef:
+  #         key: /k8s/platform/oauth2_proxy_github_client_id
+  #     - secretKey: client-secret
+  #       remoteRef:
+  #         key: /k8s/platform/oauth2_proxy_github_client_secret
+  #     - secretKey: cookie-secret
+  #       remoteRef:
+  #         key: /k8s/platform/oauth2_proxy_cookie_secret
+  #
+  # cloudflare-cert-manager:
+  #   namespace: cert-manager
+  #   refreshInterval: "5m"
+  #   secretStoreRef:
+  #     name: infisical-platform
+  #     kind: ClusterSecretStore
+  #   target:
+  #     name: cloudflare
+  #     creationPolicy: Owner
+  #   data:
+  #     - secretKey: api-token
+  #       remoteRef:
+  #         key: /k8s/platform/cloudflare_api_token
+  #
+  # cloudflare-network:
+  #   namespace: network
+  #   refreshInterval: "5m"
+  #   secretStoreRef:
+  #     name: infisical-platform
+  #     kind: ClusterSecretStore
+  #   target:
+  #     name: cloudflare
+  #     creationPolicy: Owner
+  #   data:
+  #     - secretKey: api-token
+  #       remoteRef:
+  #         key: /k8s/platform/cloudflare_api_token
+  #
+  # api-basic-auth:
+  #   namespace: network
+  #   refreshInterval: "5m"
+  #   secretStoreRef:
+  #     name: infisical-platform
+  #     kind: ClusterSecretStore
+  #   target:
+  #     name: api-basic-auth
+  #     creationPolicy: Owner
+  #   data:
+  #     - secretKey: users
+  #       remoteRef:
+  #         key: /k8s/platform/api_basic_auth_users
 
 # Cluster Roles - Cluster-wide permissions
 clusterRoles: {}
@@ -38,10 +103,6 @@ clusterRoles: {}
   #     - apiGroups: ["external-secrets.io"]
   #       resources: ["externalsecrets", "secretstores"]
   #       verbs: ["*"]
-  #   aggregationRule:
-  #     clusterRoleSelectors:
-  #       - matchLabels:
-  #           rbac.platform/aggregate-to-operator: "true"
 
 # Cluster Role Bindings - Cluster-wide permission assignments
 clusterRoleBindings: {}
