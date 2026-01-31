@@ -49,28 +49,76 @@ app-starter:
         paths: ["/"]
 ```
 
-### Application with Secrets (+ app-extensions)
+### Application with Secrets & RBAC (+ app-extensions)
 
 ```yaml
 app-starter:
   image:
-    repository: myorg/myapp
-    tag: v1.0.0
+    repository: myorg/api-server
+    tag: v2.1.0
   container:
-    envFromSecretName: myapp-secrets
+    ports:
+      - name: http
+        containerPort: 8080
+    env:
+      - name: DATABASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: api-secrets
+            key: database-url
+      - name: REDIS_URL
+        valueFrom:
+          secretKeyRef:
+            name: api-secrets
+            key: redis-url
+  serviceAccount:
+    create: true
+    name: api-server
 
 app-extensions:
   enabled: true
+
+  # Sync secrets from external provider (Vault, AWS SM, Infisical, etc.)
   externalSecrets:
-    myapp-secrets:
+    api-secrets:
+      refreshInterval: 1h
       secretStoreRef:
-        name: vault
+        name: infisical       # Your ClusterSecretStore
         kind: ClusterSecretStore
+      target:
+        name: api-secrets
+        creationPolicy: Owner
       data:
-        - secretKey: DATABASE_URL
+        - secretKey: database-url
           remoteRef:
-            key: myapp/database
-            property: url
+            key: /prod/api/database-url
+        - secretKey: redis-url
+          remoteRef:
+            key: /prod/api/redis-url
+        - secretKey: api-key
+          remoteRef:
+            key: /prod/api/api-key
+
+  # Namespace-scoped RBAC for the app
+  roles:
+    api-server:
+      rules:
+        - apiGroups: [""]
+          resources: [secrets, configmaps]
+          verbs: [get, list, watch]
+        - apiGroups: [""]
+          resources: [pods]
+          verbs: [get, list]
+
+  roleBindings:
+    api-server:
+      subjects:
+        - kind: ServiceAccount
+          name: api-server
+      roleRef:
+        kind: Role
+        name: api-server
+        apiGroup: rbac.authorization.k8s.io
 ```
 
 ### Platform Service with ClusterRole (+ platform-extensions)
