@@ -140,7 +140,8 @@ storageClasses: {}
 # Volume Snapshot Classes - Backup/restore configuration
 volumeSnapshotClasses: {}
   # standard:
-  #   driver: pd.csi.storage.gke.io
+  #   driver: pd.csi.storage.gke.io       # GKE
+  #   # driver: dobs.csi.digitalocean.com  # DigitalOcean
   #   deletionPolicy: Delete
   #   parameters:
   #     storage-locations: us-central1
@@ -149,6 +150,46 @@ volumeSnapshotClasses: {}
   #   deletionPolicy: Retain
   #   parameters:
   #     storage-locations: us-central1,us-east1
+
+# Volume Snapshots - One-off point-in-time snapshots
+# Creates standard Kubernetes VolumeSnapshot resources
+volumeSnapshots: {}
+  # my-db-snapshot-jan-2025:
+  #   namespace: data
+  #   pvcName: postgres-data
+  #   volumeSnapshotClassName: standard  # optional, uses default if not set
+  #   labels:
+  #     backup-type: manual
+  #     database: postgres
+  #   annotations:
+  #     description: "Pre-migration snapshot"
+  # restore-from-content:
+  #   namespace: data
+  #   volumeSnapshotContentName: imported-snapshot-content  # alternative to pvcName
+
+# Scheduled Volume Snapshots - Automated backup schedules
+# REQUIRES: scheduled-volume-snapshotter operator
+# Install: helm repo add scheduled-volume-snapshotter https://ryaneorth.github.io/k8s-scheduled-volume-snapshotter
+#          helm install scheduled-volume-snapshotter scheduled-volume-snapshotter/scheduled-volume-snapshotter -n platform
+# GitHub: https://github.com/ryaneorth/k8s-scheduled-volume-snapshotter
+scheduledVolumeSnapshots: {}
+  # postgres-daily:
+  #   namespace: data
+  #   pvcName: postgres-data
+  #   snapshotClassName: standard        # optional, uses default VolumeSnapshotClass
+  #   snapshotFrequency: 24h             # how often (30m, 5h, 4d, 1w)
+  #   snapshotRetention: 7d              # how long to keep (30m, 5h, 4d, 1w)
+  #   snapshotLabels:
+  #     database: postgres
+  #     backup-schedule: daily
+  # redis-hourly:
+  #   namespace: cache
+  #   pvcName: redis-data
+  #   snapshotFrequency: 1h
+  #   snapshotRetention: 24h
+  #   snapshotLabels:
+  #     cache: redis
+  #     backup-schedule: hourly
 
 # Priority Classes - Workload scheduling priorities
 priorityClasses: {}

@@ -1,5 +1,5 @@
 # Test 1: Cluster Storage Configuration
-# Demonstrates: StorageClasses, VolumeSnapshotClasses, PriorityClasses
+# Demonstrates: StorageClasses, VolumeSnapshotClasses, VolumeSnapshots, ScheduledVolumeSnapshots, PriorityClasses
 
 # Storage Classes for different performance tiers
 storageClasses:
@@ -59,6 +59,60 @@ volumeSnapshotClasses:
       retention-days: "365"
     annotations:
       snapshot.storage.kubernetes.io/description: "Long-term retention snapshots"
+
+# One-off Volume Snapshots (manual backups)
+volumeSnapshots:
+  postgres-pre-migration-jan-2025:
+    namespace: data
+    pvcName: postgres-data-pvc
+    volumeSnapshotClassName: standard
+    labels:
+      backup-type: manual
+      database: postgres
+    annotations:
+      description: "Pre-migration snapshot before schema changes"
+
+  redis-backup-jan-31:
+    namespace: cache
+    pvcName: redis-data
+    volumeSnapshotClassName: standard
+    labels:
+      backup-type: manual
+      cache: redis
+
+# Scheduled Volume Snapshots (automated backups)
+# REQUIRES: scheduled-volume-snapshotter operator installed
+# Install: helm install scheduled-volume-snapshotter scheduled-volume-snapshotter/scheduled-volume-snapshotter -n platform
+scheduledVolumeSnapshots:
+  postgres-daily:
+    namespace: data
+    pvcName: postgres-data-pvc
+    snapshotClassName: standard
+    snapshotFrequency: 24h     # Daily snapshots
+    snapshotRetention: 7d      # Keep for 7 days
+    labels:
+      database: postgres
+    snapshotLabels:
+      backup-schedule: daily
+      managed-by: scheduled-volume-snapshotter
+
+  postgres-hourly:
+    namespace: data
+    pvcName: postgres-data-pvc
+    snapshotClassName: standard
+    snapshotFrequency: 1h      # Hourly snapshots
+    snapshotRetention: 24h     # Keep for 24 hours
+    snapshotLabels:
+      backup-schedule: hourly
+      managed-by: scheduled-volume-snapshotter
+
+  redis-every-6h:
+    namespace: cache
+    pvcName: redis-data
+    snapshotFrequency: 6h      # Every 6 hours
+    snapshotRetention: 2d      # Keep for 2 days
+    snapshotLabels:
+      backup-schedule: 6hourly
 
 # Priority Classes for workload scheduling
 priorityClasses:

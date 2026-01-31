@@ -10,6 +10,8 @@ Manage cluster-wide infrastructure without writing YAML:
 - **ClusterRoles & ClusterRoleBindings** - Cluster RBAC
 - **StorageClasses** - Storage provisioner configs
 - **VolumeSnapshotClasses** - Backup configurations
+- **VolumeSnapshots** - One-off point-in-time backups
+- **ScheduledVolumeSnapshots** - Automated backup schedules
 - **PriorityClasses** - Workload scheduling priorities
 - **ResourceQuotas** - Namespace resource limits
 - **LimitRanges** - Default resource constraints
@@ -70,6 +72,44 @@ clusterIssuers:
               class: nginx
 ```
 
+## Volume Snapshots
+
+### One-off Snapshots
+
+Create manual point-in-time backups:
+
+```yaml
+volumeSnapshots:
+  my-db-backup-jan-2025:
+    namespace: data
+    pvcName: postgres-data
+    volumeSnapshotClassName: standard
+    labels:
+      backup-type: manual
+```
+
+### Scheduled Snapshots
+
+Automated backup schedules (requires `scheduled-volume-snapshotter` operator):
+
+```bash
+# Install the operator first
+helm repo add scheduled-volume-snapshotter https://ryaneorth.github.io/k8s-scheduled-volume-snapshotter
+helm install scheduled-volume-snapshotter scheduled-volume-snapshotter/scheduled-volume-snapshotter -n platform
+```
+
+```yaml
+scheduledVolumeSnapshots:
+  postgres-daily:
+    namespace: data
+    pvcName: postgres-data
+    snapshotClassName: standard
+    snapshotFrequency: 24h   # 30m, 5h, 4d, 1w
+    snapshotRetention: 7d    # how long to keep
+    snapshotLabels:
+      database: postgres
+```
+
 ## Requirements
 
 | Dependency | Required For |
@@ -77,5 +117,6 @@ clusterIssuers:
 | external-secrets-operator | ClusterSecretStores |
 | cert-manager | ClusterIssuers, Certificates |
 | Gateway API CRDs | GatewayClasses, Gateways |
-| snapshot-controller | VolumeSnapshotClasses |
+| snapshot-controller | VolumeSnapshotClasses, VolumeSnapshots |
+| scheduled-volume-snapshotter | ScheduledVolumeSnapshots |
 

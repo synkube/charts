@@ -1,0 +1,39 @@
+{{- /*
+ScheduledVolumeSnapshot CRD requires the scheduled-volume-snapshotter operator to be installed.
+Operator: https://github.com/ryaneorth/k8s-scheduled-volume-snapshotter
+Helm Chart: https://artifacthub.io/packages/helm/scheduled-volume-snapshotter/scheduled-volume-snapshotter
+*/ -}}
+{{- if .Values.scheduledVolumeSnapshots }}
+{{- range $name, $svs := .Values.scheduledVolumeSnapshots }}
+---
+apiVersion: k8s.ryanorth.io/v1beta1
+kind: ScheduledVolumeSnapshot
+metadata:
+  name: {{ $name }}
+  namespace: {{ $svs.namespace | default "default" }}
+  labels:
+    {{- include "platform-extensions.labels" $ | nindent 4 }}
+    {{- with $svs.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $svs.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  persistentVolumeClaimName: {{ $svs.pvcName }}
+  {{- if $svs.snapshotClassName }}
+  snapshotClassName: {{ $svs.snapshotClassName }}
+  {{- end }}
+  {{- /* Frequency: how often to create snapshots (e.g., 30m, 5h, 4d, 1w) */}}
+  snapshotFrequency: {{ $svs.snapshotFrequency | default "24h" }}
+  {{- /* Retention: how long to keep snapshots before deletion (e.g., 30m, 5h, 4d, 1w) */}}
+  snapshotRetention: {{ $svs.snapshotRetention | default "7d" }}
+  {{- if $svs.snapshotLabels }}
+  snapshotLabels:
+    {{- range $key, $value := $svs.snapshotLabels }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}
