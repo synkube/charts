@@ -1,4 +1,7 @@
 dependencies:
+- name: common
+  repository: file://../common
+  version: 1.0.0
 - name: app-starter
   repository: file://../app-starter
   version: 1.3.0
@@ -8,5 +11,5 @@ dependencies:
 - name: platform-extensions
   repository: file://../platform-extensions
   version: 1.5.0
-digest: sha256:c87e710a044ec1ac039da4ae80e9017423d86a41daca47950e37463a2ee61752
-generated: "2026-01-31T14:40:50.225924-08:00"
+digest: sha256:ea4806739ec22073eff8a2c3d2c5a5c7974d540cc257302724985936d28ac543
+generated: "2026-01-31T14:46:57.686248-08:00"

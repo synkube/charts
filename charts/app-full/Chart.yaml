@@ -26,16 +26,23 @@ annotations:
   artifacthub.io/category: integration-delivery
 
 dependencies:
+  # Common library - required by all subcharts for shared helpers
+  - name: common
+    version: "1.0.0"
+    repository: "file://../common"
+
+  # Core workload chart - always enabled
   - name: app-starter
     version: "1.3.0"
     repository: "file://../app-starter"
-    condition: app-starter.enabled
 
+  # Namespace-scoped resources - optional
   - name: app-extensions
     version: "1.2.1"
     repository: "file://../app-extensions"
     condition: app-extensions.enabled
 
+  # Cluster-scoped resources - optional
   - name: platform-extensions
     version: "1.5.0"
     repository: "file://../platform-extensions"
