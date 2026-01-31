@@ -1,0 +1,83 @@
+{{- if .Values.validatingWebhooks }}
+{{- range $name, $webhook := .Values.validatingWebhooks }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "platform-extensions.labels" $ | nindent 4 }}
+    {{- with $webhook.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $webhook.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+webhooks:
+{{- range $webhook.webhooks }}
+  - name: {{ .name }}
+    {{- with .namespaceSelector }}
+    namespaceSelector:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .objectSelector }}
+    objectSelector:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    rules:
+    {{- range .rules }}
+      - apiGroups:
+        {{- range .apiGroups }}
+          - {{ . | quote }}
+        {{- end }}
+        apiVersions:
+        {{- range .apiVersions }}
+          - {{ . | quote }}
+        {{- end }}
+        operations:
+        {{- range .operations }}
+          - {{ . | quote }}
+        {{- end }}
+        resources:
+        {{- range .resources }}
+          - {{ . | quote }}
+        {{- end }}
+        {{- with .scope }}
+        scope: {{ . | quote }}
+        {{- end }}
+        {{- with .resourceNames }}
+        resourceNames:
+        {{- range . }}
+          - {{ . | quote }}
+        {{- end }}
+        {{- end }}
+    {{- end }}
+    clientConfig:
+      {{- if .clientConfig.url }}
+      url: {{ .clientConfig.url | quote }}
+      {{- else }}
+      service:
+        name: {{ .clientConfig.service.name }}
+        namespace: {{ .clientConfig.service.namespace }}
+        path: {{ .clientConfig.service.path | default "/" | quote }}
+        port: {{ .clientConfig.service.port | default 443 }}
+      {{- end }}
+      {{- with .clientConfig.caBundle }}
+      caBundle: {{ . }}
+      {{- end }}
+    admissionReviewVersions:
+    {{- range (.admissionReviewVersions | default (list "v1")) }}
+      - {{ . | quote }}
+    {{- end }}
+    sideEffects: {{ .sideEffects | default "None" }}
+    failurePolicy: {{ .failurePolicy | default "Fail" }}
+    matchPolicy: {{ .matchPolicy | default "Equivalent" }}
+    timeoutSeconds: {{ .timeoutSeconds | default 10 }}
+    {{- with .matchConditions }}
+    matchConditions:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

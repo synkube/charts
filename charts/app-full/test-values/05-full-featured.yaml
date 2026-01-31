@@ -1,0 +1,286 @@
+# Test 5: Full Featured Application (all features from all charts)
+# Demonstrates: Complete usage of app-starter, app-extensions, and platform-extensions
+
+app-starter:
+  image:
+    repository: myorg/enterprise-app
+    tag: v3.0.0
+    pullPolicy: Always
+
+  replicaCount: 3
+
+  deployment:
+    annotations:
+      deployment.kubernetes.io/revision: "1"
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 1
+        maxSurge: 1
+
+  container:
+    name: app
+    ports:
+      - name: http
+        containerPort: 8080
+      - name: grpc
+        containerPort: 9090
+      - name: metrics
+        containerPort: 9100
+
+    envMap:
+      APP_NAME: enterprise-app
+      ENVIRONMENT: production
+      LOG_FORMAT: json
+      TRACING_ENABLED: "true"
+      METRICS_ENABLED: "true"
+
+    env:
+      - name: POD_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+      - name: POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+
+    envFromSecretName: enterprise-app-secrets
+
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 2
+        memory: 2Gi
+
+    livenessProbe:
+      httpGet:
+        path: /health/live
+        port: http
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      failureThreshold: 3
+
+    readinessProbe:
+      httpGet:
+        path: /health/ready
+        port: http
+      initialDelaySeconds: 10
+      periodSeconds: 5
+
+    startupProbe:
+      httpGet:
+        path: /health/startup
+        port: http
+      initialDelaySeconds: 0
+      periodSeconds: 5
+      failureThreshold: 30
+
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      readOnlyRootFilesystem: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: [ALL]
+
+  podSecurityContext:
+    fsGroup: 1000
+
+  service:
+    ports:
+      - port: 80
+        targetPort: 8080
+        name: http
+      - port: 9090
+        targetPort: 9090
+        name: grpc
+      - port: 9100
+        targetPort: 9100
+        name: metrics
+
+  extraServices:
+    - name: grpc
+      type: ClusterIP
+      ports:
+        - port: 9090
+          targetPort: 9090
+          name: grpc
+
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      traefik.ingress.kubernetes.io/router.middlewares: network-oauth2-proxy@kubernetescrd
+    hosts:
+      - host: app.example.com
+        pathType: Prefix
+        paths: ["/"]
+    tls:
+      - hosts: [app.example.com]
+        secretName: enterprise-app-tls
+
+  serviceAccount:
+    create: true
+    name: enterprise-app
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/enterprise-app
+
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+
+  serviceMonitor:
+    enabled: true
+    port: metrics
+    path: /metrics
+    interval: 30s
+
+  # Application config files
+  configMaps:
+    app.yaml:
+      mountPath: /config/app.yaml
+      content: |
+        server:
+          port: 8080
+          grpc_port: 9090
+          shutdown_timeout: 30s
+        database:
+          pool_size: 20
+          statement_cache_size: 100
+        cache:
+          type: redis
+          ttl: 3600
+        features:
+          rate_limiting: true
+          circuit_breaker: true
+
+  persistence:
+    enabled: true
+    storageClass: fast-ssd
+    size: 50Gi
+    accessModes: [ReadWriteOnce]
+    mountPath: /data
+
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values: [enterprise-app]
+            topologyKey: kubernetes.io/hostname
+
+  tolerations:
+    - key: dedicated
+      operator: Equal
+      value: app
+      effect: NoSchedule
+
+  nodeSelector:
+    node-type: application
+
+  reloader:
+    enabled: true
+
+# Enable app-extensions
+app-extensions:
+  enabled: true
+
+  externalSecrets:
+    enterprise-app-secrets:
+      refreshInterval: "1h"
+      secretStoreRef:
+        name: vault
+        kind: ClusterSecretStore
+      target:
+        name: enterprise-app-secrets
+        creationPolicy: Owner
+      data:
+        - secretKey: DATABASE_URL
+          remoteRef:
+            key: enterprise-app/database
+            property: url
+        - secretKey: REDIS_URL
+          remoteRef:
+            key: enterprise-app/redis
+            property: url
+        - secretKey: API_KEY
+          remoteRef:
+            key: enterprise-app/api
+            property: key
+
+  roles:
+    app-role:
+      rules:
+        - apiGroups: [""]
+          resources: ["secrets", "configmaps"]
+          verbs: ["get", "list", "watch"]
+        - apiGroups: [""]
+          resources: ["pods"]
+          verbs: ["get", "list"]
+
+  roleBindings:
+    app-role-binding:
+      subjects:
+        - kind: ServiceAccount
+          name: enterprise-app
+      roleRef:
+        kind: Role
+        name: app-role
+
+  networkPolicies:
+    allow-ingress:
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: enterprise-app
+      policyTypes: [Ingress]
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  name: network
+          ports:
+            - protocol: TCP
+              port: 8080
+
+# Enable platform-extensions
+platform-extensions:
+  enabled: true
+
+  clusterRoles:
+    enterprise-app-cluster:
+      rules:
+        - apiGroups: [""]
+          resources: ["nodes"]
+          verbs: ["get", "list"]
+        - apiGroups: ["metrics.k8s.io"]
+          resources: ["nodes", "pods"]
+          verbs: ["get", "list"]
+
+  clusterRoleBindings:
+    enterprise-app-cluster:
+      subjects:
+        - kind: ServiceAccount
+          name: enterprise-app
+          namespace: production
+      roleRef:
+        kind: ClusterRole
+        name: enterprise-app-cluster
+        apiGroup: rbac.authorization.k8s.io

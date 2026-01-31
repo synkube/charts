@@ -1,0 +1,63 @@
+# Test 1: Simple Application (app-starter only)
+# Demonstrates: Basic deployment with service and ingress
+
+app-starter:
+  image:
+    repository: nginx
+    tag: "1.25"
+    pullPolicy: IfNotPresent
+
+  replicaCount: 2
+
+  container:
+    ports:
+      - name: http
+        containerPort: 80
+        protocol: TCP
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: http
+      initialDelaySeconds: 10
+      periodSeconds: 10
+
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: http
+      initialDelaySeconds: 5
+      periodSeconds: 5
+
+  service:
+    enabled: true
+    type: ClusterIP
+    ports:
+      - port: 80
+        targetPort: 80
+        name: http
+
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    hosts:
+      - host: simple-app.example.com
+        pathType: Prefix
+        paths:
+          - /
+    tls:
+      - hosts:
+          - simple-app.example.com
+        secretName: simple-app-tls
+
+# app-extensions and platform-extensions disabled (defaults)

@@ -1,0 +1,920 @@
+# =============================================================================
+# APP-FULL: Complete Application Deployment Chart
+# =============================================================================
+# A unified chart that bundles three specialized charts:
+#   - app-starter:        Core workload (Deployment, Service, Ingress, ConfigMaps)
+#   - app-extensions:     Namespace-scoped resources (Secrets, RBAC, PVCs, NetworkPolicies)
+#   - platform-extensions: Cluster-scoped resources (ClusterRoles, Webhooks, StorageClasses)
+#
+# Usage Patterns:
+#   - Simple app:     Only app-starter (default)
+#   - App + secrets:  app-starter + app-extensions.enabled=true
+#   - Platform svc:   app-starter + platform-extensions.enabled=true (for cluster RBAC)
+#   - Full stack:     All three enabled
+# =============================================================================
+
+# =============================================================================
+# APP-STARTER: Core Workload Resources
+# =============================================================================
+# Creates: Deployment, Service, Ingress, ServiceAccount, ConfigMaps, HPA
+# This section is always processed (core application workload)
+
+app-starter:
+  # ---------------------------------------------------------------------------
+  # Basic Configuration
+  # ---------------------------------------------------------------------------
+
+  # Number of pod replicas
+  replicaCount: 1
+
+  # ---------------------------------------------------------------------------
+  # Image Configuration
+  # ---------------------------------------------------------------------------
+  image:
+    # Container image repository (required)
+    repository: nginx
+    # Image tag - defaults to Chart.appVersion if not set
+    tag: ""
+    # Pull policy: Always, IfNotPresent, Never
+    pullPolicy: IfNotPresent
+    # Image pull secrets for private registries
+    # pullSecrets:
+    #   - name: my-registry-secret
+
+  # ---------------------------------------------------------------------------
+  # Container Configuration
+  # ---------------------------------------------------------------------------
+  container:
+    # Container ports to expose
+    ports:
+      - name: http
+        containerPort: 8080
+        protocol: TCP
+      # - name: metrics
+      #   containerPort: 9090
+      #   protocol: TCP
+
+    # Environment variables
+    # env:
+    #   - name: LOG_LEVEL
+    #     value: "info"
+    #   - name: DB_HOST
+    #     valueFrom:
+    #       secretKeyRef:
+    #         name: db-credentials
+    #         key: host
+
+    # Environment variables from ConfigMaps/Secrets (entire contents)
+    # envFrom:
+    #   - configMapRef:
+    #       name: app-config
+    #   - secretRef:
+    #       name: app-secrets
+
+    # Container command override
+    # command: ["./app"]
+
+    # Container arguments
+    # args: ["--config", "/etc/config/app.yaml"]
+
+    # Resource requests and limits
+    # resources:
+    #   requests:
+    #     cpu: 100m
+    #     memory: 128Mi
+    #   limits:
+    #     cpu: 500m
+    #     memory: 512Mi
+
+    # Liveness probe - restarts container if unhealthy
+    # livenessProbe:
+    #   httpGet:
+    #     path: /healthz
+    #     port: http
+    #   initialDelaySeconds: 10
+    #   periodSeconds: 10
+    #   timeoutSeconds: 5
+    #   failureThreshold: 3
+
+    # Readiness probe - removes from service if not ready
+    # readinessProbe:
+    #   httpGet:
+    #     path: /ready
+    #     port: http
+    #   initialDelaySeconds: 5
+    #   periodSeconds: 5
+    #   timeoutSeconds: 3
+    #   failureThreshold: 3
+
+    # Startup probe - for slow-starting containers
+    # startupProbe:
+    #   httpGet:
+    #     path: /healthz
+    #     port: http
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 10
+    #   timeoutSeconds: 3
+    #   failureThreshold: 30
+
+    # Security context for the container
+    # securityContext:
+    #   runAsNonRoot: true
+    #   runAsUser: 1000
+    #   readOnlyRootFilesystem: true
+    #   allowPrivilegeEscalation: false
+    #   capabilities:
+    #     drop: [ALL]
+
+    # Volume mounts (volumes defined separately or via configMaps)
+    # volumeMounts:
+    #   - name: data
+    #     mountPath: /data
+    #   - name: config
+    #     mountPath: /etc/config
+    #     readOnly: true
+
+  # ---------------------------------------------------------------------------
+  # Service Configuration
+  # ---------------------------------------------------------------------------
+  service:
+    # Enable/disable Service creation
+    enabled: true
+    # Service type: ClusterIP, NodePort, LoadBalancer, ExternalName
+    type: ClusterIP
+    # Service ports mapping
+    ports:
+      - port: 80           # Service port (external)
+        targetPort: 8080   # Container port (internal)
+        name: http
+        # nodePort: 30080  # Only for NodePort/LoadBalancer
+      # - port: 9090
+      #   targetPort: 9090
+      #   name: metrics
+    # Service annotations (e.g., for cloud load balancers)
+    # annotations:
+    #   service.beta.kubernetes.io/aws-load-balancer-type: nlb
+
+  # ---------------------------------------------------------------------------
+  # Ingress Configuration
+  # ---------------------------------------------------------------------------
+  ingress:
+    # Enable/disable Ingress creation
+    enabled: false
+    # Ingress class name (nginx, traefik, etc.)
+    className: ""
+    # Ingress annotations
+    # annotations:
+    #   cert-manager.io/cluster-issuer: letsencrypt-prod
+    #   nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    #   traefik.ingress.kubernetes.io/router.middlewares: platform-redirect-https@kubernetescrd
+    # Host rules
+    # hosts:
+    #   - host: app.example.com
+    #     pathType: Prefix  # Prefix, Exact, ImplementationSpecific
+    #     paths:
+    #       - /
+    #       - /api
+    # TLS configuration
+    # tls:
+    #   - hosts:
+    #       - app.example.com
+    #     secretName: app-tls-cert
+
+  # ---------------------------------------------------------------------------
+  # ServiceAccount Configuration
+  # ---------------------------------------------------------------------------
+  serviceAccount:
+    # Create a ServiceAccount for this app
+    create: false
+    # ServiceAccount name (auto-generated if empty and create=true)
+    name: ""
+    # Annotations (e.g., for IAM roles)
+    # annotations:
+    #   eks.amazonaws.com/role-arn: arn:aws:iam::123456789:role/my-app-role
+    #   iam.gke.io/gcp-service-account: my-app@project.iam.gserviceaccount.com
+
+  # ---------------------------------------------------------------------------
+  # ConfigMaps (with optional volume mounting)
+  # ---------------------------------------------------------------------------
+  # Creates ConfigMaps and optionally mounts them as files
+  # configMaps:
+  #   # Simple ConfigMap (not mounted)
+  #   app-env:
+  #     content: |
+  #       LOG_LEVEL=info
+  #       DEBUG=false
+  #
+  #   # ConfigMap mounted as a file
+  #   config.yaml:
+  #     mountPath: /etc/app/config.yaml  # Mount path triggers volume creation
+  #     content: |
+  #       server:
+  #         port: 8080
+  #       database:
+  #         host: postgres
+  #
+  #   # Multiple config files in same directory
+  #   settings.json:
+  #     mountPath: /app/config/settings.json
+  #     content: |
+  #       {"theme": "dark", "locale": "en"}
+  configMaps: {}
+
+  # ---------------------------------------------------------------------------
+  # Pod Configuration
+  # ---------------------------------------------------------------------------
+
+  # Pod annotations
+  # podAnnotations:
+  #   prometheus.io/scrape: "true"
+  #   prometheus.io/port: "9090"
+
+  # Pod labels (added to default labels)
+  # podLabels:
+  #   app.kubernetes.io/component: backend
+
+  # Pod security context
+  # podSecurityContext:
+  #   fsGroup: 1000
+  #   runAsNonRoot: true
+
+  # Node selector for pod scheduling
+  # nodeSelector:
+  #   kubernetes.io/arch: amd64
+  #   node-type: compute
+
+  # Tolerations for taints
+  # tolerations:
+  #   - key: "dedicated"
+  #     operator: "Equal"
+  #     value: "app"
+  #     effect: "NoSchedule"
+
+  # Affinity rules
+  # affinity:
+  #   podAntiAffinity:
+  #     preferredDuringSchedulingIgnoredDuringExecution:
+  #       - weight: 100
+  #         podAffinityTerm:
+  #           labelSelector:
+  #             matchLabels:
+  #               app: my-app
+  #           topologyKey: kubernetes.io/hostname
+
+  # Topology spread constraints
+  # topologySpreadConstraints:
+  #   - maxSkew: 1
+  #     topologyKey: topology.kubernetes.io/zone
+  #     whenUnsatisfiable: ScheduleAnyway
+  #     labelSelector:
+  #       matchLabels:
+  #         app: my-app
+
+  # ---------------------------------------------------------------------------
+  # Horizontal Pod Autoscaler
+  # ---------------------------------------------------------------------------
+  # autoscaling:
+  #   enabled: true
+  #   minReplicas: 2
+  #   maxReplicas: 10
+  #   targetCPUUtilizationPercentage: 80
+  #   targetMemoryUtilizationPercentage: 80
+
+  # ---------------------------------------------------------------------------
+  # Additional Volumes (for existing PVCs, Secrets, etc.)
+  # ---------------------------------------------------------------------------
+  # volumes:
+  #   - name: data
+  #     persistentVolumeClaim:
+  #       claimName: my-app-data
+  #   - name: secrets
+  #     secret:
+  #       secretName: my-app-secrets
+  #   - name: tmp
+  #     emptyDir: {}
+
+  # ---------------------------------------------------------------------------
+  # Init Containers
+  # ---------------------------------------------------------------------------
+  # initContainers:
+  #   - name: init-db
+  #     image: busybox:1.36
+  #     command: ['sh', '-c', 'until nc -z postgres 5432; do sleep 2; done']
+
+  # ---------------------------------------------------------------------------
+  # Sidecar Containers
+  # ---------------------------------------------------------------------------
+  # sidecars:
+  #   - name: log-shipper
+  #     image: fluent/fluent-bit:latest
+  #     volumeMounts:
+  #       - name: logs
+  #         mountPath: /var/log/app
+
+# =============================================================================
+# APP-EXTENSIONS: Namespace-Scoped Resources
+# =============================================================================
+# Creates: Secrets, ExternalSecrets, ConfigMaps, Roles, RoleBindings,
+#          NetworkPolicies, PVCs, ServiceAccounts
+#
+# Enable this when your app needs:
+#   - Secrets management (native, external-secrets, sealed-secrets)
+#   - Namespace RBAC (Roles, RoleBindings)
+#   - Network isolation (NetworkPolicies)
+#   - Persistent storage (PVCs)
+# =============================================================================
+
+app-extensions:
+  # Set to true to enable namespace-scoped resources
+  enabled: false
+
+  # ---------------------------------------------------------------------------
+  # Kubernetes Secrets
+  # ---------------------------------------------------------------------------
+  # Creates native Kubernetes Secrets
+  # secrets:
+  #   db-credentials:
+  #     type: Opaque  # Opaque, kubernetes.io/tls, kubernetes.io/dockerconfigjson
+  #     data:
+  #       # Values must be base64 encoded
+  #       username: YWRtaW4=
+  #       password: c2VjcmV0MTIz
+  #   # Or use stringData for plain text (auto-encoded)
+  #   api-keys:
+  #     type: Opaque
+  #     stringData:
+  #       api-key: "my-api-key-value"
+  secrets: {}
+
+  # ---------------------------------------------------------------------------
+  # External Secrets (external-secrets.io)
+  # ---------------------------------------------------------------------------
+  # Syncs secrets from external providers (AWS SM, Vault, Infisical, etc.)
+  # externalSecrets:
+  #   db-credentials:
+  #     refreshInterval: 1h
+  #     secretStoreRef:
+  #       name: cluster-secret-store  # ClusterSecretStore name
+  #       kind: ClusterSecretStore
+  #     target:
+  #       name: db-credentials        # Created Secret name
+  #       creationPolicy: Owner
+  #     data:
+  #       - secretKey: username       # Key in created Secret
+  #         remoteRef:
+  #           key: /prod/db/username  # Path in secret provider
+  #       - secretKey: password
+  #         remoteRef:
+  #           key: /prod/db/password
+  externalSecrets: {}
+
+  # ---------------------------------------------------------------------------
+  # Secret Stores (namespace-scoped)
+  # ---------------------------------------------------------------------------
+  # Creates namespace-scoped SecretStore (for namespace-specific providers)
+  # secretStores:
+  #   team-vault:
+  #     provider:
+  #       vault:
+  #         server: https://vault.example.com
+  #         path: secret/team-a
+  #         auth:
+  #           kubernetes:
+  #             mountPath: kubernetes
+  #             role: team-a-role
+  secretStores: {}
+
+  # ---------------------------------------------------------------------------
+  # Sealed Secrets (bitnami-labs/sealed-secrets)
+  # ---------------------------------------------------------------------------
+  # Encrypted secrets that can be stored in Git
+  # sealedSecrets:
+  #   api-credentials:
+  #     encryptedData:
+  #       api-key: AgBc123...  # Encrypted with kubeseal
+  sealedSecrets: {}
+
+  # ---------------------------------------------------------------------------
+  # ConfigMaps (standalone, not mounted)
+  # ---------------------------------------------------------------------------
+  # For ConfigMaps that need to exist but aren't directly mounted to app-starter
+  # configMaps:
+  #   shared-config:
+  #     data:
+  #       config.yaml: |
+  #         key: value
+  configMaps: {}
+
+  # ---------------------------------------------------------------------------
+  # Service Accounts (additional)
+  # ---------------------------------------------------------------------------
+  # Creates additional ServiceAccounts (beyond the one in app-starter)
+  # serviceAccounts:
+  #   job-runner:
+  #     annotations:
+  #       eks.amazonaws.com/role-arn: arn:aws:iam::123456789:role/job-runner
+  serviceAccounts: {}
+
+  # ---------------------------------------------------------------------------
+  # Roles (namespace-scoped RBAC)
+  # ---------------------------------------------------------------------------
+  # Creates namespace-scoped Roles
+  # roles:
+  #   pod-reader:
+  #     rules:
+  #       - apiGroups: [""]
+  #         resources: ["pods", "pods/log"]
+  #         verbs: ["get", "list", "watch"]
+  #   secret-manager:
+  #     rules:
+  #       - apiGroups: [""]
+  #         resources: ["secrets"]
+  #         verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  roles: {}
+
+  # ---------------------------------------------------------------------------
+  # Role Bindings
+  # ---------------------------------------------------------------------------
+  # Binds Roles to subjects (users, groups, service accounts)
+  # roleBindings:
+  #   app-pod-reader:
+  #     subjects:
+  #       - kind: ServiceAccount
+  #         name: my-app
+  #         namespace: default
+  #     roleRef:
+  #       kind: Role
+  #       name: pod-reader
+  #       apiGroup: rbac.authorization.k8s.io
+  roleBindings: {}
+
+  # ---------------------------------------------------------------------------
+  # Network Policies
+  # ---------------------------------------------------------------------------
+  # Controls pod-to-pod and external network traffic
+  # networkPolicies:
+  #   allow-internal-only:
+  #     podSelector:
+  #       matchLabels:
+  #         app: my-app
+  #     policyTypes:
+  #       - Ingress
+  #       - Egress
+  #     ingress:
+  #       - from:
+  #           - namespaceSelector:
+  #               matchLabels:
+  #                 name: my-namespace
+  #     egress:
+  #       - to:
+  #           - namespaceSelector:
+  #               matchLabels:
+  #                 name: kube-system
+  #         ports:
+  #           - protocol: UDP
+  #             port: 53
+  networkPolicies: {}
+
+  # ---------------------------------------------------------------------------
+  # Persistent Volume Claims
+  # ---------------------------------------------------------------------------
+  # Creates PVCs for persistent storage
+  # persistentVolumeClaims:
+  #   app-data:
+  #     accessModes:
+  #       - ReadWriteOnce
+  #     storageClassName: standard
+  #     resources:
+  #       requests:
+  #         storage: 10Gi
+  #   shared-files:
+  #     accessModes:
+  #       - ReadWriteMany
+  #     storageClassName: nfs
+  #     resources:
+  #       requests:
+  #         storage: 50Gi
+  persistentVolumeClaims: {}
+
+# =============================================================================
+# PLATFORM-EXTENSIONS: Cluster-Scoped Resources
+# =============================================================================
+# Creates: ClusterRoles, ClusterRoleBindings, ClusterSecretStores,
+#          StorageClasses, Webhooks, Leases, ClusterIssuers, etc.
+#
+# ⚠️  WARNING: Requires cluster-admin permissions when enabled
+#
+# Enable this when your app needs:
+#   - Cluster-wide RBAC (read ingresses, nodes, namespaces across cluster)
+#   - Admission webhooks (validating/mutating)
+#   - Leader election (Leases)
+#   - Storage provisioners (StorageClasses)
+#   - TLS certificate management (ClusterIssuers)
+# =============================================================================
+
+platform-extensions:
+  # Set to true to enable cluster-scoped resources
+  enabled: false
+
+  # ---------------------------------------------------------------------------
+  # Cluster Roles (cluster-wide RBAC)
+  # ---------------------------------------------------------------------------
+  # Creates ClusterRoles for cluster-wide permissions
+  # Common use cases:
+  #   - Dashboard apps that read ingresses/services across namespaces
+  #   - Operators that manage resources cluster-wide
+  #   - Monitoring tools that scrape metrics from all namespaces
+  #
+  # clusterRoles:
+  #   # Read-only cluster-wide access
+  #   ingress-reader:
+  #     rules:
+  #       - apiGroups: ["networking.k8s.io"]
+  #         resources: ["ingresses"]
+  #         verbs: ["get", "list", "watch"]
+  #       - apiGroups: [""]
+  #         resources: ["services", "namespaces"]
+  #         verbs: ["get", "list", "watch"]
+  #
+  #   # Full operator permissions
+  #   my-operator:
+  #     rules:
+  #       - apiGroups: ["myapp.example.com"]
+  #         resources: ["*"]
+  #         verbs: ["*"]
+  #       - apiGroups: [""]
+  #         resources: ["secrets", "configmaps", "events"]
+  #         verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  clusterRoles: {}
+
+  # ---------------------------------------------------------------------------
+  # Cluster Role Bindings
+  # ---------------------------------------------------------------------------
+  # Binds ClusterRoles to subjects (cluster-wide)
+  # clusterRoleBindings:
+  #   # Bind to ServiceAccount
+  #   my-app-cluster-access:
+  #     subjects:
+  #       - kind: ServiceAccount
+  #         name: my-app
+  #         namespace: default
+  #     roleRef:
+  #       kind: ClusterRole
+  #       name: ingress-reader
+  #       apiGroup: rbac.authorization.k8s.io
+  #
+  #   # Bind to Group (for users)
+  #   platform-admins:
+  #     subjects:
+  #       - kind: Group
+  #         name: platform-admins
+  #         apiGroup: rbac.authorization.k8s.io
+  #     roleRef:
+  #       kind: ClusterRole
+  #       name: my-operator
+  #       apiGroup: rbac.authorization.k8s.io
+  clusterRoleBindings: {}
+
+  # ---------------------------------------------------------------------------
+  # Validating Webhook Configurations
+  # ---------------------------------------------------------------------------
+  # Intercepts and validates API requests before persistence
+  # Use cases: Policy enforcement, security scanning, schema validation
+  #
+  # validatingWebhooks:
+  #   policy-validator:
+  #     labels:
+  #       app.kubernetes.io/component: admission
+  #     annotations:
+  #       # Auto-inject CA from cert-manager Certificate
+  #       cert-manager.io/inject-ca-from: platform/webhook-cert
+  #     webhooks:
+  #       - name: validate.policy.example.com
+  #         # Target specific namespaces
+  #         namespaceSelector:
+  #           matchLabels:
+  #             policy-enforcement: enabled
+  #           matchExpressions:
+  #             - key: kubernetes.io/metadata.name
+  #               operator: NotIn
+  #               values: [kube-system, kube-public]
+  #         # Target specific objects
+  #         objectSelector:
+  #           matchLabels:
+  #             validate: "true"
+  #         rules:
+  #           - apiGroups: ["apps"]
+  #             apiVersions: ["v1"]
+  #             operations: ["CREATE", "UPDATE"]
+  #             resources: ["deployments"]
+  #             resourceNames: []        # Empty = all, or specific names
+  #             scope: Namespaced        # Namespaced, Cluster, or "*"
+  #         clientConfig:
+  #           # Option 1: In-cluster service
+  #           service:
+  #             name: webhook-service
+  #             namespace: platform
+  #             path: /validate
+  #             port: 443
+  #           # Option 2: External URL
+  #           # url: https://external.example.com/validate
+  #           # caBundle: <base64-ca-cert>
+  #         admissionReviewVersions: ["v1", "v1beta1"]
+  #         sideEffects: None           # None, NoneOnDryRun
+  #         failurePolicy: Fail         # Fail or Ignore
+  #         matchPolicy: Equivalent     # Exact or Equivalent
+  #         timeoutSeconds: 10
+  #         # CEL expressions (K8s 1.27+)
+  #         matchConditions:
+  #           - name: exclude-system
+  #             expression: "!request.namespace.startsWith('kube-')"
+  validatingWebhooks: {}
+
+  # ---------------------------------------------------------------------------
+  # Mutating Webhook Configurations
+  # ---------------------------------------------------------------------------
+  # Intercepts and modifies API requests before persistence
+  # Use cases: Sidecar injection, default values, label injection
+  #
+  # mutatingWebhooks:
+  #   sidecar-injector:
+  #     labels:
+  #       app.kubernetes.io/component: injection
+  #     annotations:
+  #       cert-manager.io/inject-ca-from: platform/webhook-cert
+  #     webhooks:
+  #       - name: inject.sidecar.example.com
+  #         namespaceSelector:
+  #           matchLabels:
+  #             sidecar-injection: enabled
+  #         objectSelector:
+  #           matchExpressions:
+  #             - key: sidecar.example.com/inject
+  #               operator: NotIn
+  #               values: ["false"]
+  #         rules:
+  #           - apiGroups: [""]
+  #             apiVersions: ["v1"]
+  #             operations: ["CREATE"]
+  #             resources: ["pods"]
+  #             scope: Namespaced
+  #         clientConfig:
+  #           service:
+  #             name: sidecar-injector
+  #             namespace: platform
+  #             path: /inject
+  #             port: 443
+  #         admissionReviewVersions: ["v1"]
+  #         sideEffects: None
+  #         failurePolicy: Ignore       # Usually Ignore for mutating
+  #         reinvocationPolicy: IfNeeded # Never or IfNeeded
+  #         timeoutSeconds: 10
+  mutatingWebhooks: {}
+
+  # ---------------------------------------------------------------------------
+  # Leases (Leader Election)
+  # ---------------------------------------------------------------------------
+  # Used by controllers/operators for leader election in HA setups
+  # The controller acquires a lease; if it fails, another replica takes over
+  #
+  # leases:
+  #   controller-leader:
+  #     namespace: platform           # Namespace for the lease
+  #     labels:
+  #       app.kubernetes.io/component: controller
+  #     leaseDurationSeconds: 15      # How long leader holds lease
+  #     # holderIdentity, acquireTime, renewTime are set by the controller at runtime
+  leases: {}
+
+  # ---------------------------------------------------------------------------
+  # Cluster Secret Stores (external-secrets.io)
+  # ---------------------------------------------------------------------------
+  # Cluster-wide secret store for external-secrets (shared across namespaces)
+  # clusterSecretStores:
+  #   aws-secrets-manager:
+  #     provider:
+  #       aws:
+  #         service: SecretsManager
+  #         region: us-east-1
+  #         auth:
+  #           jwt:
+  #             serviceAccountRef:
+  #               name: external-secrets
+  #               namespace: external-secrets
+  #   infisical:
+  #     provider:
+  #       infisical:
+  #         auth:
+  #           universalAuthCredentials:
+  #             clientId:
+  #               key: clientId
+  #               name: infisical-credentials
+  #               namespace: external-secrets
+  clusterSecretStores: {}
+
+  # ---------------------------------------------------------------------------
+  # External Secrets (cluster-scoped)
+  # ---------------------------------------------------------------------------
+  # External secrets that sync to specific namespaces
+  # externalSecrets:
+  #   shared-credentials:
+  #     namespace: default
+  #     refreshInterval: 1h
+  #     secretStoreRef:
+  #       name: cluster-secret-store
+  #       kind: ClusterSecretStore
+  #     target:
+  #       name: shared-credentials
+  #     data:
+  #       - secretKey: api-key
+  #         remoteRef:
+  #           key: /shared/api-key
+  externalSecrets: {}
+
+  # ---------------------------------------------------------------------------
+  # Storage Classes
+  # ---------------------------------------------------------------------------
+  # Defines storage provisioners for PVCs
+  # storageClasses:
+  #   fast-ssd:
+  #     provisioner: kubernetes.io/aws-ebs
+  #     parameters:
+  #       type: gp3
+  #       iops: "3000"
+  #       throughput: "125"
+  #     reclaimPolicy: Delete
+  #     volumeBindingMode: WaitForFirstConsumer
+  #     allowVolumeExpansion: true
+  storageClasses: {}
+
+  # ---------------------------------------------------------------------------
+  # Volume Snapshot Classes
+  # ---------------------------------------------------------------------------
+  # Defines snapshot providers for volume backups
+  # volumeSnapshotClasses:
+  #   csi-snapshotter:
+  #     driver: ebs.csi.aws.com
+  #     deletionPolicy: Delete
+  #     parameters:
+  #       tagSpecification_1: "Backup=true"
+  volumeSnapshotClasses: {}
+
+  # ---------------------------------------------------------------------------
+  # Volume Snapshots
+  # ---------------------------------------------------------------------------
+  # Creates snapshots of existing PVCs
+  # volumeSnapshots:
+  #   db-snapshot:
+  #     namespace: default
+  #     volumeSnapshotClassName: csi-snapshotter
+  #     source:
+  #       persistentVolumeClaimName: postgres-data
+  volumeSnapshots: {}
+
+  # ---------------------------------------------------------------------------
+  # Scheduled Volume Snapshots
+  # ---------------------------------------------------------------------------
+  # CronJob-based automated snapshots
+  # scheduledVolumeSnapshots:
+  #   daily-db-backup:
+  #     schedule: "0 2 * * *"
+  #     namespace: default
+  #     pvcName: postgres-data
+  #     snapshotClassName: csi-snapshotter
+  #     retention: 7
+  scheduledVolumeSnapshots: {}
+
+  # ---------------------------------------------------------------------------
+  # Priority Classes
+  # ---------------------------------------------------------------------------
+  # Defines pod scheduling priorities
+  # priorityClasses:
+  #   critical:
+  #     value: 1000000
+  #     globalDefault: false
+  #     preemptionPolicy: PreemptLowerPriority
+  #     description: "Critical system pods"
+  #   high-priority:
+  #     value: 100000
+  #     globalDefault: false
+  priorityClasses: {}
+
+  # ---------------------------------------------------------------------------
+  # Resource Quotas (namespace-scoped but defined cluster-wide)
+  # ---------------------------------------------------------------------------
+  # Limits resource consumption per namespace
+  # resourceQuotas:
+  #   team-a-quota:
+  #     namespace: team-a
+  #     spec:
+  #       hard:
+  #         requests.cpu: "10"
+  #         requests.memory: 20Gi
+  #         limits.cpu: "20"
+  #         limits.memory: 40Gi
+  #         pods: "50"
+  resourceQuotas: {}
+
+  # ---------------------------------------------------------------------------
+  # Limit Ranges (namespace-scoped but defined cluster-wide)
+  # ---------------------------------------------------------------------------
+  # Default resource limits for pods/containers
+  # limitRanges:
+  #   default-limits:
+  #     namespace: default
+  #     limits:
+  #       - type: Container
+  #         default:
+  #           cpu: 500m
+  #           memory: 512Mi
+  #         defaultRequest:
+  #           cpu: 100m
+  #           memory: 128Mi
+  limitRanges: {}
+
+  # ---------------------------------------------------------------------------
+  # Network Policies (cluster-scoped definitions)
+  # ---------------------------------------------------------------------------
+  # Network policies applied to specific namespaces
+  # networkPolicies:
+  #   deny-external:
+  #     namespace: secure-ns
+  #     spec:
+  #       podSelector: {}
+  #       policyTypes:
+  #         - Egress
+  #       egress:
+  #         - to:
+  #             - ipBlock:
+  #                 cidr: 10.0.0.0/8
+  networkPolicies: {}
+
+  # ---------------------------------------------------------------------------
+  # Ingress Classes
+  # ---------------------------------------------------------------------------
+  # Defines ingress controller classes
+  # ingressClasses:
+  #   internal:
+  #     controller: k8s.io/ingress-nginx
+  #     parameters:
+  #       apiGroup: k8s.nginx.org
+  #       kind: IngressParameters
+  #       name: internal-config
+  ingressClasses: {}
+
+  # ---------------------------------------------------------------------------
+  # Gateway Classes (Gateway API)
+  # ---------------------------------------------------------------------------
+  # Defines gateway implementations
+  # gatewayClasses:
+  #   istio:
+  #     controllerName: istio.io/gateway-controller
+  gatewayClasses: {}
+
+  # ---------------------------------------------------------------------------
+  # Gateways (Gateway API)
+  # ---------------------------------------------------------------------------
+  # Creates Gateway resources
+  # gateways:
+  #   public-gateway:
+  #     namespace: istio-system
+  #     gatewayClassName: istio
+  #     listeners:
+  #       - name: http
+  #         port: 80
+  #         protocol: HTTP
+  gateways: {}
+
+  # ---------------------------------------------------------------------------
+  # Cluster Issuers (cert-manager)
+  # ---------------------------------------------------------------------------
+  # Cluster-wide certificate issuers
+  # clusterIssuers:
+  #   letsencrypt-prod:
+  #     spec:
+  #       acme:
+  #         server: https://acme-v02.api.letsencrypt.org/directory
+  #         email: admin@example.com
+  #         privateKeySecretRef:
+  #           name: letsencrypt-prod-key
+  #         solvers:
+  #           - http01:
+  #               ingress:
+  #                 class: nginx
+  clusterIssuers: {}
+
+  # ---------------------------------------------------------------------------
+  # Certificates (cert-manager)
+  # ---------------------------------------------------------------------------
+  # Certificate resources for TLS
+  # certificates:
+  #   wildcard-cert:
+  #     namespace: default
+  #     spec:
+  #       secretName: wildcard-tls
+  #       issuerRef:
+  #         name: letsencrypt-prod
+  #         kind: ClusterIssuer
+  #       dnsNames:
+  #         - "*.example.com"
+  certificates: {}

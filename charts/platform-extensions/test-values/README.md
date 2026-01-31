@@ -2,7 +2,7 @@
 
 This directory contains test value files for the `platform-extensions` chart, demonstrating cluster-wide infrastructure configurations.
 
-⚠️ **WARNING**: All resources in this chart require **cluster-admin** permissions.
+⚠️ **NOTE**: Resources in this chart are cluster-scoped and require **cluster-admin** permissions when enabled. If all values are empty (default), no resources are created and no special permissions are needed.
 
 ## Test Files
 
@@ -37,6 +37,21 @@ This directory contains test value files for the `platform-extensions` chart, de
 - LimitRanges for resource constraints
 - Platform TLS certificates (wildcards, internal CA)
 - Multi-environment resource management
+
+### `05-simple-certificates.yaml`
+**Purpose**: Simple certificate configuration
+**Features**:
+- Basic ClusterIssuer setup
+- Simple certificate generation
+
+### `06-webhooks-leases.yaml`
+**Purpose**: Admission webhooks and leader election
+**Features**:
+- ValidatingWebhookConfigurations for policy enforcement
+- MutatingWebhookConfigurations for sidecar injection
+- Leases for controller leader election
+- Multi-zone scheduler locks
+- Match conditions and namespace selectors
 
 ## Running Tests
 

@@ -1,0 +1,42 @@
+apiVersion: v2
+name: app-full
+description: Complete application chart bundling workloads, namespace resources, and cluster resources
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+kubeVersion: ">=1.22.0-0"
+home: https://github.com/synkube/
+sources:
+  - https://github.com/synkube/charts/tree/main/charts/app-full
+icon: https://raw.githubusercontent.com/synkube/.github/main/assets/synkube-logo-256.jpg
+keywords:
+  - app-full
+  - complete
+  - all-in-one
+  - deployment
+  - platform
+  - cluster-resources
+  - namespace-resources
+  - workloads
+  - universal
+maintainers:
+  - name: bsgrigorov
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/category: integration-delivery
+
+dependencies:
+  - name: app-starter
+    version: "1.3.0"
+    repository: "file://../app-starter"
+    condition: app-starter.enabled
+
+  - name: app-extensions
+    version: "1.2.1"
+    repository: "file://../app-extensions"
+    condition: app-extensions.enabled
+
+  - name: platform-extensions
+    version: "1.5.0"
+    repository: "file://../platform-extensions"
+    condition: platform-extensions.enabled

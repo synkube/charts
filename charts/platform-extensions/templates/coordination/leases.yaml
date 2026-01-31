@@ -1,0 +1,35 @@
+{{- if .Values.leases }}
+{{- range $name, $lease := .Values.leases }}
+---
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  name: {{ $name }}
+  namespace: {{ $lease.namespace | default $.Release.Namespace }}
+  labels:
+    {{- include "platform-extensions.labels" $ | nindent 4 }}
+    {{- with $lease.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $lease.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with $lease.holderIdentity }}
+  holderIdentity: {{ . | quote }}
+  {{- end }}
+  {{- with $lease.leaseDurationSeconds }}
+  leaseDurationSeconds: {{ . }}
+  {{- end }}
+  {{- with $lease.acquireTime }}
+  acquireTime: {{ . | quote }}
+  {{- end }}
+  {{- with $lease.renewTime }}
+  renewTime: {{ . | quote }}
+  {{- end }}
+  {{- with $lease.leaseTransitions }}
+  leaseTransitions: {{ . }}
+  {{- end }}
+{{- end }}
+{{- end }}

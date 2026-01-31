@@ -1,0 +1,134 @@
+# Test 3: Platform Service with Cluster RBAC (all three charts)
+# Demonstrates: ClusterRoles, ClusterRoleBindings for cluster-wide access
+
+app-starter:
+  image:
+    repository: ghcr.io/gethomepage/homepage
+    tag: v1.9.0
+
+  replicaCount: 1
+
+  container:
+    ports:
+      - name: http
+        containerPort: 3000
+
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+    livenessProbe:
+      httpGet:
+        path: /
+        port: http
+      initialDelaySeconds: 10
+
+    readinessProbe:
+      httpGet:
+        path: /
+        port: http
+      initialDelaySeconds: 5
+
+  service:
+    ports:
+      - port: 3000
+        targetPort: 3000
+        name: http
+
+  ingress:
+    enabled: true
+    className: traefik
+    hosts:
+      - host: dashboard.example.com
+        paths: ["/"]
+    tls:
+      - hosts: [dashboard.example.com]
+        secretName: dashboard-tls
+
+  serviceAccount:
+    create: true
+    name: dashboard
+
+  # Homepage configuration files
+  configMaps:
+    settings.yaml:
+      mountPath: /app/config/settings.yaml
+      content: |
+        title: Platform Dashboard
+        theme: dark
+        color: slate
+
+    bookmarks.yaml:
+      mountPath: /app/config/bookmarks.yaml
+      content: |
+        - Development:
+            - GitHub:
+                - icon: github.png
+                  href: https://github.com/myorg
+
+    widgets.yaml:
+      mountPath: /app/config/widgets.yaml
+      content: |
+        - kubernetes:
+            cluster:
+              show: true
+              cpu: true
+              memory: true
+
+    services.yaml:
+      mountPath: /app/config/services.yaml
+      content: |
+        []
+
+    kubernetes.yaml:
+      mountPath: /app/config/kubernetes.yaml
+      content: |
+        mode: cluster
+
+    docker.yaml:
+      mountPath: /app/config/docker.yaml
+      content: |
+        {}
+
+# Enable platform-extensions for cluster-wide RBAC
+platform-extensions:
+  enabled: true
+
+  clusterRoles:
+    dashboard:
+      rules:
+        # Core resources
+        - apiGroups: [""]
+          resources: [namespaces, pods, nodes, services, endpoints]
+          verbs: [get, list]
+        - apiGroups: [""]
+          resources: [configmaps, secrets]
+          verbs: [get, list]
+        # Networking
+        - apiGroups: ["networking.k8s.io"]
+          resources: [ingresses]
+          verbs: [get, list]
+        - apiGroups: ["traefik.io", "traefik.containo.us"]
+          resources: [ingressroutes]
+          verbs: [get, list]
+        # Metrics
+        - apiGroups: ["metrics.k8s.io"]
+          resources: [nodes, pods]
+          verbs: [get, list]
+
+  clusterRoleBindings:
+    dashboard:
+      subjects:
+        - kind: ServiceAccount
+          name: dashboard
+          namespace: platform
+      roleRef:
+        kind: ClusterRole
+        name: dashboard
+        apiGroup: rbac.authorization.k8s.io
+
+# app-extensions disabled

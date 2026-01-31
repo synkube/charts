@@ -1,0 +1,275 @@
+# Test 6: Webhooks and Leader Election
+# Demonstrates: ValidatingWebhookConfigurations, MutatingWebhookConfigurations, Leases
+# Covers: Service-based, URL-based, namespaceSelector, objectSelector, matchConditions, resourceNames
+
+# Validating Webhook Configurations
+validatingWebhooks:
+  # Policy enforcement webhook (service-based, multiple webhooks)
+  policy-validator:
+    labels:
+      app.kubernetes.io/component: policy-engine
+      policy.platform.io/type: validation
+    annotations:
+      cert-manager.io/inject-ca-from: platform/policy-webhook-cert
+    webhooks:
+      # Workload validation
+      - name: validate.workloads.platform.io
+        namespaceSelector:
+          matchExpressions:
+            - key: kubernetes.io/metadata.name
+              operator: NotIn
+              values: [kube-system, kube-public, kube-node-lease]
+        rules:
+          - apiGroups: ["apps"]
+            apiVersions: ["v1"]
+            operations: ["CREATE", "UPDATE"]
+            resources: ["deployments", "statefulsets", "daemonsets"]
+            scope: Namespaced
+        clientConfig:
+          service:
+            name: policy-webhook
+            namespace: platform
+            path: /validate-workloads
+            port: 443
+        admissionReviewVersions: ["v1", "v1beta1"]
+        sideEffects: None
+        failurePolicy: Fail
+        matchPolicy: Equivalent
+        timeoutSeconds: 10
+
+      # Resource validation with objectSelector
+      - name: validate.resources.platform.io
+        objectSelector:
+          matchLabels:
+            validate-resources: "true"
+        rules:
+          - apiGroups: [""]
+            apiVersions: ["v1"]
+            operations: ["CREATE", "UPDATE"]
+            resources: ["pods"]
+            scope: Namespaced
+        clientConfig:
+          service:
+            name: policy-webhook
+            namespace: platform
+            path: /validate-resources
+            port: 443
+        sideEffects: None
+        failurePolicy: Ignore
+        timeoutSeconds: 5
+
+  # Security webhook with matchConditions (CEL)
+  security-validator:
+    labels:
+      app.kubernetes.io/component: security-scanner
+    webhooks:
+      - name: validate.security.platform.io
+        namespaceSelector:
+          matchLabels:
+            security-scanning: enabled
+        rules:
+          - apiGroups: [""]
+            apiVersions: ["v1"]
+            operations: ["CREATE"]
+            resources: ["pods"]
+            scope: Namespaced
+        clientConfig:
+          service:
+            name: security-scanner
+            namespace: security
+            path: /validate
+            port: 9443
+        admissionReviewVersions: ["v1"]
+        sideEffects: None
+        failurePolicy: Fail
+        timeoutSeconds: 30
+        matchConditions:
+          - name: exclude-system-pods
+            expression: "!request.namespace.startsWith('kube-')"
+          - name: only-containers-with-images
+            expression: "request.object.spec.containers.all(c, c.image != '')"
+
+  # URL-based external webhook (for external services)
+  external-validator:
+    labels:
+      webhook-type: external
+    annotations:
+      description: "External compliance validation service"
+    webhooks:
+      - name: validate.compliance.external.io
+        rules:
+          - apiGroups: [""]
+            apiVersions: ["v1"]
+            operations: ["CREATE"]
+            resources: ["secrets"]
+            resourceNames: ["production-secrets", "api-keys"]  # Only specific secrets
+            scope: Namespaced
+        clientConfig:
+          url: https://compliance.example.com/validate
+          caBundle: LS0tLS1CRUdJTi...  # base64-encoded CA cert
+        admissionReviewVersions: ["v1"]
+        sideEffects: None
+        failurePolicy: Ignore  # Don't block if external service unavailable
+        timeoutSeconds: 5
+        namespaceSelector:
+          matchLabels:
+            compliance-required: "true"
+
+# Mutating Webhook Configurations
+mutatingWebhooks:
+  # Sidecar injection webhook (common pattern: Istio, Vault, Linkerd)
+  sidecar-injector:
+    labels:
+      app.kubernetes.io/component: sidecar-injector
+      injection-type: sidecar
+    annotations:
+      cert-manager.io/inject-ca-from: platform/sidecar-injector-cert
+    webhooks:
+      # Main sidecar injection
+      - name: inject.sidecar.platform.io
+        namespaceSelector:
+          matchLabels:
+            sidecar-injection: enabled
+        objectSelector:
+          matchExpressions:
+            - key: sidecar.platform.io/inject
+              operator: NotIn
+              values: ["false", "disabled"]
+        rules:
+          - apiGroups: [""]
+            apiVersions: ["v1"]
+            operations: ["CREATE"]
+            resources: ["pods"]
+            scope: Namespaced
+        clientConfig:
+          service:
+            name: sidecar-injector
+            namespace: platform
+            path: /inject
+            port: 443
+        admissionReviewVersions: ["v1"]
+        sideEffects: None
+        failurePolicy: Ignore
+        reinvocationPolicy: IfNeeded  # Re-invoke if other webhooks modify the pod
+        timeoutSeconds: 10
+
+      # Logging sidecar injection
+      - name: inject.logging.platform.io
+        namespaceSelector:
+          matchExpressions:
+            - key: logging-injection
+              operator: In
+              values: ["enabled", "auto"]
+        rules:
+          - apiGroups: [""]
+            apiVersions: ["v1"]
+            operations: ["CREATE"]
+            resources: ["pods"]
+        clientConfig:
+          service:
+            name: sidecar-injector
+            namespace: platform
+            path: /inject-logging
+            port: 443
+        sideEffects: None
+        failurePolicy: Ignore
+        reinvocationPolicy: Never
+        timeoutSeconds: 5
+
+  # Default resource mutator (adds defaults to deployments)
+  resource-defaults:
+    labels:
+      app.kubernetes.io/component: defaulter
+    webhooks:
+      - name: mutate.defaults.platform.io
+        rules:
+          - apiGroups: ["apps"]
+            apiVersions: ["v1"]
+            operations: ["CREATE"]
+            resources: ["deployments"]
+            scope: Namespaced
+        clientConfig:
+          service:
+            name: resource-defaulter
+            namespace: platform
+            path: /mutate-defaults
+            port: 443
+        admissionReviewVersions: ["v1"]
+        sideEffects: None
+        failurePolicy: Ignore
+        timeoutSeconds: 5
+        matchConditions:
+          - name: has-no-resources
+            expression: "!has(request.object.spec.template.spec.containers[0].resources)"
+          - name: not-system-namespace
+            expression: "!request.namespace.startsWith('kube-')"
+
+  # Label injection mutator (adds standard labels)
+  label-injector:
+    labels:
+      app.kubernetes.io/component: label-injector
+    webhooks:
+      - name: mutate.labels.platform.io
+        namespaceSelector:
+          matchLabels:
+            auto-labeling: enabled
+        rules:
+          - apiGroups: ["apps"]
+            apiVersions: ["v1"]
+            operations: ["CREATE", "UPDATE"]
+            resources: ["deployments", "statefulsets"]
+            scope: Namespaced
+        clientConfig:
+          service:
+            name: label-injector
+            namespace: platform
+            path: /inject-labels
+            port: 443
+        admissionReviewVersions: ["v1"]
+        sideEffects: None
+        failurePolicy: Ignore
+        reinvocationPolicy: Never
+        timeoutSeconds: 3
+
+# Leases for Leader Election
+leases:
+  # Controller manager leader election
+  controller-manager-leader:
+    namespace: platform
+    labels:
+      app.kubernetes.io/component: controller-manager
+      app.kubernetes.io/part-of: platform-system
+    annotations:
+      description: "Leader election lease for platform controller manager"
+    leaseDurationSeconds: 15
+
+  # Webhook server leader election
+  webhook-leader:
+    namespace: platform
+    labels:
+      app.kubernetes.io/component: webhook-server
+    leaseDurationSeconds: 30
+
+  # Garbage collector leader
+  gc-controller-leader:
+    namespace: platform
+    labels:
+      app.kubernetes.io/component: garbage-collector
+    annotations:
+      managed-by: platform-gc-controller
+    leaseDurationSeconds: 60
+
+  # Multi-zone scheduler lock
+  scheduler-lock-zone-a:
+    namespace: kube-system
+    labels:
+      topology.kubernetes.io/zone: zone-a
+      scheduler: custom
+    leaseDurationSeconds: 10
+
+  scheduler-lock-zone-b:
+    namespace: kube-system
+    labels:
+      topology.kubernetes.io/zone: zone-b
+      scheduler: custom
+    leaseDurationSeconds: 10

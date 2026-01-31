@@ -8,6 +8,9 @@ Manage cluster-wide infrastructure without writing YAML:
 
 - **ClusterSecretStores** - Cluster-wide secret providers
 - **ClusterRoles & ClusterRoleBindings** - Cluster RBAC
+- **ValidatingWebhookConfigurations** - Admission validation
+- **MutatingWebhookConfigurations** - Admission mutation
+- **Leases** - Leader election for controllers
 - **StorageClasses** - Storage provisioner configs
 - **VolumeSnapshotClasses** - Backup configurations
 - **VolumeSnapshots** - One-off point-in-time backups

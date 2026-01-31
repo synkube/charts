@@ -1,0 +1,180 @@
+# Test 4: Controller with Webhooks and Leader Election (full platform service)
+# Demonstrates: ValidatingWebhooks, MutatingWebhooks, Leases, ClusterRoles
+
+app-starter:
+  image:
+    repository: myorg/custom-controller
+    tag: v1.0.0
+
+  replicaCount: 2  # HA setup
+
+  container:
+    name: controller
+    ports:
+      - name: webhook
+        containerPort: 9443
+      - name: metrics
+        containerPort: 8080
+      - name: health
+        containerPort: 8081
+
+    args:
+      - --leader-elect=true
+      - --leader-election-id=custom-controller
+      - --webhook-port=9443
+      - --metrics-bind-address=:8080
+      - --health-probe-bind-address=:8081
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: health
+      initialDelaySeconds: 15
+
+    readinessProbe:
+      httpGet:
+        path: /readyz
+        port: health
+      initialDelaySeconds: 5
+
+  service:
+    ports:
+      - port: 443
+        targetPort: 9443
+        name: webhook
+      - port: 8080
+        targetPort: 8080
+        name: metrics
+
+  serviceAccount:
+    create: true
+    name: custom-controller
+
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+# Enable app-extensions for secrets
+app-extensions:
+  enabled: true
+
+  secrets:
+    controller-certs:
+      type: kubernetes.io/tls
+      stringData:
+        tls.crt: |
+          -----BEGIN CERTIFICATE-----
+          # Certificate would go here
+          -----END CERTIFICATE-----
+        tls.key: |
+          -----BEGIN PRIVATE KEY-----
+          # Private key would go here
+          -----END PRIVATE KEY-----
+
+# Enable platform-extensions for cluster resources
+platform-extensions:
+  enabled: true
+
+  clusterRoles:
+    custom-controller:
+      rules:
+        # Core resources
+        - apiGroups: [""]
+          resources: ["*"]
+          verbs: ["get", "list", "watch"]
+        - apiGroups: [""]
+          resources: ["events"]
+          verbs: ["create", "patch"]
+        # Apps
+        - apiGroups: ["apps"]
+          resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+          verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        # CRDs managed by controller
+        - apiGroups: ["myorg.io"]
+          resources: ["*"]
+          verbs: ["*"]
+        # Leader election
+        - apiGroups: ["coordination.k8s.io"]
+          resources: ["leases"]
+          verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        # Webhook certs
+        - apiGroups: ["admissionregistration.k8s.io"]
+          resources: ["validatingwebhookconfigurations", "mutatingwebhookconfigurations"]
+          verbs: ["get", "list", "watch", "update", "patch"]
+
+  clusterRoleBindings:
+    custom-controller:
+      subjects:
+        - kind: ServiceAccount
+          name: custom-controller
+          namespace: controllers
+      roleRef:
+        kind: ClusterRole
+        name: custom-controller
+        apiGroup: rbac.authorization.k8s.io
+
+  # Validating webhook for CRD validation
+  validatingWebhooks:
+    custom-controller-validation:
+      annotations:
+        cert-manager.io/inject-ca-from: controllers/custom-controller-cert
+      webhooks:
+        - name: validate.myorg.io
+          rules:
+            - apiGroups: ["myorg.io"]
+              apiVersions: ["v1", "v1beta1"]
+              operations: ["CREATE", "UPDATE"]
+              resources: ["*"]
+              scope: Namespaced
+          clientConfig:
+            service:
+              name: custom-controller
+              namespace: controllers
+              path: /validate
+              port: 443
+          admissionReviewVersions: ["v1"]
+          sideEffects: None
+          failurePolicy: Fail
+          timeoutSeconds: 10
+
+  # Mutating webhook for defaults
+  mutatingWebhooks:
+    custom-controller-mutation:
+      annotations:
+        cert-manager.io/inject-ca-from: controllers/custom-controller-cert
+      webhooks:
+        - name: mutate.myorg.io
+          rules:
+            - apiGroups: ["myorg.io"]
+              apiVersions: ["v1", "v1beta1"]
+              operations: ["CREATE"]
+              resources: ["*"]
+              scope: Namespaced
+          clientConfig:
+            service:
+              name: custom-controller
+              namespace: controllers
+              path: /mutate
+              port: 443
+          admissionReviewVersions: ["v1"]
+          sideEffects: None
+          failurePolicy: Ignore
+          reinvocationPolicy: Never
+          timeoutSeconds: 5
+
+  # Leader election lease
+  leases:
+    custom-controller:
+      namespace: controllers
+      labels:
+        app.kubernetes.io/name: custom-controller
+        app.kubernetes.io/component: leader-election
+      leaseDurationSeconds: 15
