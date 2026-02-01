@@ -35,7 +35,7 @@ app-starter:
     # Container image repository (required)
     repository: nginx
     # Image tag - defaults to Chart.appVersion if not set
-    tag: ""
+    tag: "latest"
     # Pull policy: Always, IfNotPresent, Never
     pullPolicy: IfNotPresent
     # Image pull secrets for private registries
