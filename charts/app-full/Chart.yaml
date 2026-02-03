@@ -2,7 +2,7 @@ apiVersion: v2
 name: app-full
 description: Complete application chart bundling workloads, namespace resources, and cluster resources
 type: application
-version: 0.1.0
+version: 1.0.0
 appVersion: "1.0.0"
 kubeVersion: ">=1.22.0-0"
 home: https://github.com/synkube/
