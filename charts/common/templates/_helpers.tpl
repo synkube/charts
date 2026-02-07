@@ -162,4 +162,3 @@ Usage: {{ include "common.configChecksum" (dict "configMap" "my-config" "context
 {{- $ctx := .context -}}
 checksum/config: {{ include (printf "%s" $configMapName) $ctx | sha256sum }}
 {{- end }}
-
