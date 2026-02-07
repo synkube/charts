@@ -11,5 +11,5 @@ dependencies:
 - name: platform-extensions
   repository: file://../platform-extensions
   version: 1.5.0
-digest: sha256:ea4806739ec22073eff8a2c3d2c5a5c7974d540cc257302724985936d28ac543
-generated: "2026-01-31T14:46:57.686248-08:00"
+digest: sha256:2b4a45f45f03766e4910a758ddfdb6f6dc9f738fec7681de4579fa57d7403d8b
+generated: "2026-02-06T22:31:29.709009-08:00"

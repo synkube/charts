@@ -1,7 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-# Update dependencies for all charts efficiently
+# Update dependencies for all charts.
+# Uses 'helm dependency update' so Chart.lock stays in sync with Chart.yaml.
+# After changing dependencies in Chart.yaml, run this script and commit Chart.lock.
+
 echo "🔄 Updating dependencies for all charts..."
 
 # Update helm repositories once
@@ -22,14 +25,12 @@ for chart_dir in charts/*/; do
     echo "📦 Processing: $chart_name"
 
     if [ -f "$chart_dir/Chart.yaml" ] && grep -q "dependencies:" "$chart_dir/Chart.yaml"; then
-        echo "🔧 Building dependencies for $chart_name (no repo refresh)"
-        cd "$chart_dir"
-        helm dependency build --skip-refresh
-        cd - > /dev/null
+        echo "🔧 Updating dependencies for $chart_name (resyncs Chart.lock)"
+        (cd "$chart_dir" && helm dependency update --skip-refresh)
     else
         echo "ℹ️  No dependencies found for $chart_name"
     fi
 done
 
 echo ""
-echo "✅ All chart dependencies updated efficiently!"
+echo "✅ All chart dependencies updated. Commit any changed Chart.lock files."

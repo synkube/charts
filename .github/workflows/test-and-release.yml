@@ -140,12 +140,12 @@ jobs:
           echo "CHART_VERSION=$chart_version" >> $GITHUB_ENV
           echo "Chart ${{ matrix.chart }} version: $chart_version"
 
-      - name: Helm dependency build
+      - name: Helm dependency update
         working-directory: charts/${{ matrix.chart }}
         run: |
-          if [ -f "Chart.lock" ] || [ -f "requirements.yaml" ] || [ -f "Chart.yaml" ] && grep -q "dependencies:" Chart.yaml; then
-            echo "📦 Building dependencies for ${{ matrix.chart }} (no repo refresh)"
-            helm dependency build --skip-refresh
+          if grep -q "dependencies:" Chart.yaml 2>/dev/null; then
+            echo "📦 Updating dependencies for ${{ matrix.chart }} (resyncs Chart.lock)"
+            helm dependency update --skip-refresh
           else
             echo "ℹ️  No dependencies found for ${{ matrix.chart }}"
           fi
