@@ -136,6 +136,53 @@ entries:
       artifacthub.io/license: Apache-2.0
     apiVersion: v2
     appVersion: 1.0.0
+    created: "2026-02-07T06:32:51.532830243Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      version: 1.0.0
+    - condition: app-starter.enabled
+      name: app-starter
+      repository: file://../app-starter
+      version: 1.3.0
+    - condition: app-extensions.enabled
+      name: app-extensions
+      repository: file://../app-extensions
+      version: 1.2.1
+    - condition: platform-extensions.enabled
+      name: platform-extensions
+      repository: file://../platform-extensions
+      version: 1.5.0
+    description: Complete application chart bundling workloads, namespace resources,
+      and cluster resources
+    digest: 57e0d0b8f0d9325d4a01732bf788421d7183beb359774e89aabf362e8a4482bb
+    home: https://github.com/synkube/
+    icon: https://raw.githubusercontent.com/synkube/.github/main/assets/synkube-logo-256.jpg
+    keywords:
+    - app-full
+    - complete
+    - all-in-one
+    - deployment
+    - platform
+    - cluster-resources
+    - namespace-resources
+    - workloads
+    - universal
+    kubeVersion: '>=1.22.0-0'
+    maintainers:
+    - name: bsgrigorov
+    name: app-full
+    sources:
+    - https://github.com/synkube/charts/tree/main/charts/app-full
+    type: application
+    urls:
+    - https://github.com/synkube/charts/releases/download/app-full-1.0.0/app-full-1.0.0.tgz
+    version: 1.0.0
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.0.0
     created: "2026-01-31T22:55:59.982857793Z"
     dependencies:
     - name: common
@@ -692,4 +739,4 @@ entries:
     urls:
     - https://github.com/synkube/charts/releases/download/platform-extensions-1.0.0/platform-extensions-1.0.0.tgz
     version: 1.0.0
-generated: "2026-01-31T22:56:00.126303235Z"
+generated: "2026-02-07T06:32:51.532872914Z"
