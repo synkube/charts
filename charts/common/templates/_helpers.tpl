@@ -162,13 +162,3 @@ Usage: {{ include "common.configChecksum" (dict "configMap" "my-config" "context
 {{- $ctx := .context -}}
 checksum/config: {{ include (printf "%s" $configMapName) $ctx | sha256sum }}
 {{- end }}
-
-{{/*
-Generate a secret checksum for pod restart on secret change
-Usage: {{ include "common.secretChecksum" (dict "secret" "my-secret" "context" .) }}
-*/}}
-{{- define "common.secretChecksum" -}}
-{{- $secretName := .secret -}}
-{{- $ctx := .context -}}
-checksum/secret: {{ include (printf "%s" $secretName) $ctx | sha256sum }}
-{{- end }}

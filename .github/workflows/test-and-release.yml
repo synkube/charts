@@ -100,13 +100,6 @@ jobs:
             changed_charts=("${charts_dirs[@]}")
           fi
 
-          # Always include common so it is always built and released (avoids index
-          # pointing to common-1.0.0 release that was never created when common wasn't "changed")
-          if [[ " ${changed_charts[*]} " != *" common "* ]] && [[ -d "charts/common" ]]; then
-            echo "📌 Including common so release and tgz always exist for index"
-            changed_charts+=("common")
-          fi
-
           echo "Final charts to process: ${changed_charts[@]}"
 
           # Create JSON output
