@@ -271,24 +271,6 @@ jobs:
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
-      # Use the same chart set we tested (including common). Chart-releaser's own
-      # change detection only releases charts changed since last tag, so library
-      # charts like common often get skipped. Pre-populate .cr-release-packages
-      # from test job artifacts so every tested chart gets a release.
-      - name: Download chart packages from test job
-        uses: actions/download-artifact@v4
-        with:
-          pattern: chart-*
-          merge-multiple: true
-          path: .cr-release-packages-tmp
-
-      - name: Prepare .cr-release-packages for chart-releaser
-        run: |
-          mkdir -p .cr-release-packages
-          find .cr-release-packages-tmp -name "*.tgz" -exec cp {} .cr-release-packages/ \;
-          echo "Packages to release:"
-          ls -la .cr-release-packages/
-
       # Delete existing releases and tags to allow overwrite
       - name: Delete existing releases and tags
         env:
@@ -328,7 +310,6 @@ jobs:
         with:
           charts_dir: charts
           mark_as_latest: false
-          skip_packaging: true
 
       - name: Pages Summary
         run: |
