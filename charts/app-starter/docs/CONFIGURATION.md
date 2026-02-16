@@ -173,7 +173,7 @@ container:
 
   # Load all keys from ConfigMap/Secret as env vars
   envFrom: []
-  envFromSecretName: ""
+  envFromSecrets: []
   envFromConfigmaps: []
 
   # Probes
@@ -228,7 +228,8 @@ container:
     - app-config
 
   # Load all keys from Secret as env vars
-  envFromSecretName: my-secret
+  envFromSecrets:
+    - my-secret
 ```
 
 **Merge Order**: `env` → `envMap` → `extraEnv` (last wins for duplicates)

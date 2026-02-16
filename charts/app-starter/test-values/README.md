@@ -108,7 +108,7 @@ The test script automatically discovers all `.yaml` and `.yml` files in this dir
 - container.envMap (map format)
 - container.extraEnv (override format)
 - Env var precedence and merging
-- envFromSecretName and envFromConfigmaps
+- envFromSecrets and envFromConfigmaps
 - Secrets as environment variables
 
 ### 11-deployment-with-pvc.yaml
@@ -140,7 +140,7 @@ The test script automatically discovers all `.yaml` and `.yml` files in this dir
 - configMaps file mounting (multiple files)
 - Custom volumes (emptyDir with size limits)
 - container.volumes and volumeMounts
-- envFromSecretName for env vars
+- envFromSecrets for env vars
 - Multiple mount paths
 
 ### 14-statefulset-advanced.yaml

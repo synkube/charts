@@ -124,9 +124,13 @@ container:
   #   - secretRef:
   #       name: my-secret
 
-  # -- Use envFromSecretName to load all Secret data as env vars
-  envFromSecretName: ""
-  # envFromSecretName: my-secret
+  # -- Load env vars from Secrets (all keys from each secret).
+  # Secrets must exist in the same namespace as the workload (K8s does not support cross-namespace secretRef).
+  # For secrets in other namespaces, sync them into the app namespace (e.g. ExternalSecret, reflector).
+  envFromSecrets: []
+  # envFromSecrets:
+  #   - my-secret
+  #   - api-secrets
 
   # -- Load env vars from ConfigMaps
   envFromConfigmaps: []

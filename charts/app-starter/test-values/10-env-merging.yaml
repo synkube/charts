@@ -75,7 +75,7 @@ secrets:
   DB_PASSWORD: "secret-db-password"
 
 # Load all keys from a secret as env vars
-envFromSecretName: app-secrets
+envFromSecrets: [app-secrets]
 
 # Load from multiple ConfigMaps
 envFromConfigmaps:

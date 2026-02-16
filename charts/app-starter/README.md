@@ -79,7 +79,7 @@ container:
   envMap:
     LOG_LEVEL: info
     ENVIRONMENT: production
-  envFromSecretName: api-secrets
+  envFromSecrets: [api-secrets]
   resources:
     requests:
       cpu: 200m
@@ -146,7 +146,7 @@ container:
     PORT: "8080"
 
   # Load all keys from ConfigMap/Secret
-  envFromSecretName: my-secret
+  envFromSecrets: [my-secret]
   envFromConfigmaps: [shared-config]
 ```
 

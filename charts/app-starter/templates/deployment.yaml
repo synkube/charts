@@ -84,16 +84,18 @@ spec:
           env:
             {{- include "app-starter.mergedEnv" . | nindent 12 }}
           {{- end }}
-          {{- if or .Values.container.envFrom .Values.container.envFromSecretName .Values.container.envFromConfigmaps }}
+          {{- if or .Values.container.envFrom .Values.container.envFromSecrets .Values.container.envFromConfigmaps }}
           envFrom:
             {{- with .Values.container.envFrom }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-            {{- if .Values.container.envFromSecretName  }}
+            {{- if .Values.container.envFromSecrets }}
+            {{- range .Values.container.envFromSecrets }}
             - secretRef:
-                name: {{ .Values.container.envFromSecretName }}
+                name: {{ . | quote }}
             {{- end }}
-            {{- if .Values.container.envFromConfigmaps  }}
+            {{- end }}
+            {{- if .Values.container.envFromConfigmaps }}
             {{- range .Values.container.envFromConfigmaps }}
             - configMapRef:
                 name: {{ . | quote }}

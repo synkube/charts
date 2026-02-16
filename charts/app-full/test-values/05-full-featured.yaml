@@ -45,7 +45,7 @@ app-starter:
           fieldRef:
             fieldPath: metadata.namespace
 
-    envFromSecretName: enterprise-app-secrets
+    envFromSecrets: [enterprise-app-secrets]
 
     resources:
       requests:

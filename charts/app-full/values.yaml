@@ -66,6 +66,9 @@ app-starter:
     #         key: host
 
     # Environment variables from ConfigMaps/Secrets (entire contents)
+    # envFrom: []  # raw list (configMapRef/secretRef)
+    # envFromSecrets: []   # secret names (same namespace); e.g. [app-secrets]
+    # envFromConfigmaps: [] # configmap names; e.g. [app-config]
     # envFrom:
     #   - configMapRef:
     #       name: app-config
