@@ -230,6 +230,45 @@ entries:
       artifacthub.io/license: Apache-2.0
     apiVersion: v2
     appVersion: 1.0.0
+    created: "2026-02-16T22:07:04.059343283Z"
+    dependencies:
+    - name: common
+      repository: file://../common
+      version: 1.0.0
+    description: A streamlined, extensible Helm chart for deploying applications on
+      Kubernetes
+    digest: a7689b8b15ac9963f6dadb671891d4eba7adb906211272757b578fc320b0c830
+    home: https://github.com/synkube/
+    icon: https://raw.githubusercontent.com/synkube/.github/main/assets/synkube-logo-256.jpg
+    keywords:
+    - app-starter
+    - extensible
+    - one-chart-to-rule-them-all
+    - generic-app
+    - deployment
+    - statefulset
+    - cronjob
+    - ingress
+    - universal
+    - boilerplate
+    - workloads
+    - autoscaling
+    - gateway-api
+    kubeVersion: '>=1.22.0-0'
+    maintainers:
+    - name: bsgrigorov
+    name: app-starter
+    sources:
+    - https://github.com/synkube/charts/tree/main/charts/app-starter
+    type: application
+    urls:
+    - https://github.com/synkube/charts/releases/download/app-starter-1.4.0/app-starter-1.4.0.tgz
+    version: 1.4.0
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 1.0.0
     created: "2026-01-11T09:05:09.086753902Z"
     dependencies:
     - name: common
@@ -739,4 +778,4 @@ entries:
     urls:
     - https://github.com/synkube/charts/releases/download/platform-extensions-1.0.0/platform-extensions-1.0.0.tgz
     version: 1.0.0
-generated: "2026-02-07T06:32:51.532872914Z"
+generated: "2026-02-16T22:07:04.224901206Z"
