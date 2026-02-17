@@ -1,0 +1,110 @@
+# Trivy IaC scan: Helm charts (Kubernetes misconfig).
+# Whole-repo scan of charts/ and config files.
+#
+# ADVANCED_SECURITY (env below):
+#   "true"  – SARIF → Security tab + artifacts (public / GHAS).
+#   "false" – Table → job summary only (private, no GHAS). Default.
+#
+name: Trivy IaC (Kubernetes / Helm)
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**/*.yaml"
+      - "**/*.yml"
+      - "**/*.tpl"
+      - "**/Chart.yaml"
+      - "**/Dockerfile"
+      - ".github/workflows/trivy.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "**/*.yaml"
+      - "**/*.yml"
+      - "**/*.tpl"
+      - "**/Chart.yaml"
+      - "**/Dockerfile"
+      - ".github/workflows/trivy.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ADVANCED_SECURITY: "false"
+  TRIVY_SKIP_DIRS: "**/.git,**/node_modules"
+
+jobs:
+  trivy-config:
+    name: trivy-iac
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Trivy config scan (SARIF)
+        if: env.ADVANCED_SECURITY == 'true'
+        uses: aquasecurity/trivy-action@0.34.0
+        with:
+          scan-type: "config"
+          scan-ref: "."
+          skip-dirs: ${{ env.TRIVY_SKIP_DIRS }}
+          format: "sarif"
+          output: "trivy-config.sarif"
+          severity: "CRITICAL,HIGH"
+          exit-code: "0"
+          hide-progress: "true"
+
+      - name: Trivy config scan (table)
+        if: env.ADVANCED_SECURITY != 'true'
+        uses: aquasecurity/trivy-action@0.34.0
+        with:
+          scan-type: "config"
+          scan-ref: "."
+          skip-dirs: ${{ env.TRIVY_SKIP_DIRS }}
+          format: "table"
+          output: "trivy-config.txt"
+          severity: "CRITICAL,HIGH"
+          exit-code: "0"
+          hide-progress: "true"
+
+      - name: Post Trivy config to job summary
+        if: env.ADVANCED_SECURITY != 'true'
+        run: |
+          {
+            echo "### Trivy IaC (Kubernetes / Helm)"
+            echo ""
+            if [[ -s trivy-config.txt ]]; then
+              echo "<details><summary>Click to expand</summary>"
+              echo ""
+              echo '```'
+              cat trivy-config.txt
+              echo '```'
+              echo ""
+              echo "</details>"
+            else
+              echo "No CRITICAL/HIGH findings."
+            fi
+            echo ""
+          } >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Trivy config SARIF
+        if: env.ADVANCED_SECURITY == 'true'
+        uses: github/codeql-action/upload-sarif@v3
+        continue-on-error: true
+        with:
+          sarif_file: "trivy-config.sarif"
+          category: "trivy-iac-k8s-helm"
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Trivy SARIF as artifacts
+        if: env.ADVANCED_SECURITY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-iac-sarif
+          path: trivy-config.sarif
