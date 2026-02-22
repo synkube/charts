@@ -37,6 +37,8 @@ statefulSet:
 image:
   repository: nginx
   tag: latest
+  # Optional digest (e.g. sha256:...) appended as repository:tag@digest in pod templates.
+  digest: ""
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []

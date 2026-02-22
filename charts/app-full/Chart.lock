@@ -4,12 +4,12 @@ dependencies:
   version: 1.0.0
 - name: app-starter
   repository: file://../app-starter
-  version: 1.4.0
+  version: 1.4.1
 - name: app-extensions
   repository: file://../app-extensions
   version: 1.2.1
 - name: platform-extensions
   repository: file://../platform-extensions
   version: 1.5.0
-digest: sha256:c58ac50ea4a7687d87c5a283a36f2f2ebcd0f19661462e80a8b073cac21c4ff6
-generated: "2026-02-16T13:46:06.538848-08:00"
+digest: sha256:625ec9b4fe1132135d7561f4507c86b5931986b77aba92b33ab95b63866e9a10
+generated: "2026-02-22T03:27:17.120397-08:00"

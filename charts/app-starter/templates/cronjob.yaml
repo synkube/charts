@@ -64,10 +64,10 @@ spec:
           containers:
             - name: {{ $cronjob.name }}
               {{- if $cronjob.image }}
-              image: "{{ $cronjob.image.repository }}:{{ $cronjob.image.tag }}"
+              image: "{{ $cronjob.image.repository }}:{{ $cronjob.image.tag }}{{ if $cronjob.image.digest }}@{{ $cronjob.image.digest }}{{ end }}"
               imagePullPolicy: {{ $cronjob.image.pullPolicy }}
               {{- else if $.Values.image }}
-              image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag }}"
+              image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag }}{{ if $.Values.image.digest }}@{{ $.Values.image.digest }}{{ end }}"
               imagePullPolicy: {{ $.Values.image.pullPolicy }}
               {{- end }}
               {{- if $cronjob.env }}
