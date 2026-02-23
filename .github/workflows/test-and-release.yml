@@ -28,14 +28,14 @@ jobs:
       charts: ${{ steps.matrix.outputs.charts }}
       has-changes: ${{ steps.matrix.outputs.has-changes }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Get changed files
         id: changes
         if: ${{ github.event_name != 'workflow_dispatch' }}
-        uses: tj-actions/changed-files@v44
+        uses: tj-actions/changed-files@v47
 
       - name: Detect changed charts
         id: matrix
@@ -122,10 +122,10 @@ jobs:
         chart: ${{ fromJSON(needs.detect-changes.outputs.charts) }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: azure/setup-helm@v4.3.1
-      - uses: mikefarah/yq@v4.32.2
+      - uses: mikefarah/yq@v4.52.4
       - uses: azure/setup-kubectl@v4
 
       - name: Update Helm repositories
@@ -169,7 +169,7 @@ jobs:
           helm package . --version ${{ env.CHART_VERSION }}
 
       - name: Upload chart artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: chart-${{ matrix.chart }}-${{ env.CHART_VERSION }}
           path: charts/${{ matrix.chart }}/${{ matrix.chart }}-${{ env.CHART_VERSION }}.tgz
@@ -188,10 +188,10 @@ jobs:
       charts-published: ${{ steps.collect.outputs.charts }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: azure/setup-helm@v4.3.1
-      - uses: mikefarah/yq@v4.32.2
+      - uses: mikefarah/yq@v4.52.4
 
       - name: Get chart version
         id: vars
@@ -202,7 +202,7 @@ jobs:
           echo "REPOSITORY=${repository@L}" >> $GITHUB_ENV
 
       - name: Download chart artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: chart-${{ matrix.chart }}-${{ env.CHART_VERSION }}
           path: charts/${{ matrix.chart }}/
@@ -243,12 +243,12 @@ jobs:
       contents: write # Required for chart-releaser to push to gh-pages branch
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - uses: azure/setup-helm@v4.3.1
-      - uses: mikefarah/yq@v4.32.2
+      - uses: mikefarah/yq@v4.52.4
 
       - name: Get repository info
         run: |
