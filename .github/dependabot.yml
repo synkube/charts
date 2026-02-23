@@ -1,0 +1,23 @@
+# Dependabot: dependency update PRs. No repo-level "enable" needed for public repos;
+# add this file and Dependabot runs. For org/private repos ensure Dependabot is
+# allowed in org/repo Security & analysis settings.
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# Groups: one PR per directory. GitHub Actions PRs run CI when .github/workflows or .github/actions change.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+      day: monday
+    open-pull-requests-limit: 1
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    labels:
+      - dependencies
+      - workflows
+    commit-message:
+      prefix: build(deps)
