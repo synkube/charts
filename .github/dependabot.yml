@@ -19,5 +19,9 @@ updates:
     labels:
       - dependencies
       - workflows
+    reviewers:
+      - "platform"
+    assignees:
+      - "bsgrigorov"
     commit-message:
       prefix: build(deps)
