@@ -169,7 +169,7 @@ jobs:
           helm package . --version ${{ env.CHART_VERSION }}
 
       - name: Upload chart artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: chart-${{ matrix.chart }}-${{ env.CHART_VERSION }}
           path: charts/${{ matrix.chart }}/${{ matrix.chart }}-${{ env.CHART_VERSION }}.tgz
@@ -202,7 +202,7 @@ jobs:
           echo "REPOSITORY=${repository@L}" >> $GITHUB_ENV
 
       - name: Download chart artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: chart-${{ matrix.chart }}-${{ env.CHART_VERSION }}
           path: charts/${{ matrix.chart }}/
