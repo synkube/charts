@@ -50,7 +50,7 @@ jobs:
         run: mkdir -p results-dir
 
       - name: Run KICS scan
-        uses: Checkmarx/kics-github-action@v2.1.19
+        uses: Checkmarx/kics-github-action@05aa5eb70eede1355220f4ca5238d96b397e30a6 # v2.1.20
         with:
           path: "."
           output_path: "results-dir"
