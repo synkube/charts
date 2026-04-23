@@ -1,0 +1,61 @@
+# KICS (Keeping Infrastructure as Code Secure) – whole repo IaC scan.
+# Run alongside Trivy (trivy.yml) to compare findings.
+# Scans: Kubernetes, Helm, Dockerfile, etc.
+#
+# ADVANCED_SECURITY (same as trivy.yml): when "true", upload SARIF + artifacts.
+#
+name: KICS IaC Scan
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ADVANCED_SECURITY: "false"
+
+jobs:
+  kics:
+    name: kics-iac
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create results dir
+        run: mkdir -p results-dir
+
+      - name: Run KICS
+        uses: synkube/actions/.github/actions/kics-github-action@main
+        with:
+          path: .
+          token: ${{ secrets.GITHUB_TOKEN }}
+          output_path: results-dir/
+          output_formats: json,sarif
+          ignore_on_exit: results
+
+      - name: Upload KICS SARIF
+        if: env.ADVANCED_SECURITY == 'true'
+        uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
+        continue-on-error: true
+        with:
+          sarif_file: "results-dir/results.sarif"
+          category: "kics-iac"
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload KICS results as artifacts
+        if: env.ADVANCED_SECURITY == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kics-results
+          path: results-dir/
