@@ -28,7 +28,7 @@ jobs:
       charts: ${{ steps.matrix.outputs.charts }}
       has-changes: ${{ steps.matrix.outputs.has-changes }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
@@ -122,10 +122,19 @@ jobs:
         chart: ${{ fromJSON(needs.detect-changes.outputs.charts) }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
-      - uses: mikefarah/yq@5a7e72a743649b1b3a47d1a1d8214f3453173c51 # v4.52.4
+      - name: Install yq
+        env:
+          YQ_VERSION: v4.53.2
+          YQ_SHA256: d56bf5c6819e8e696340c312bd70f849dc1678a7cda9c2ad63eebd906371d56b
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /tmp/yq
+          echo "${YQ_SHA256}  /tmp/yq" | sha256sum -c -
+          sudo install -m 0755 /tmp/yq /usr/local/bin/yq
+          yq --version
       - uses: azure/setup-kubectl@776406bce94f63e41d621b960d78ee25c8b76ede # v4.0.1
 
       - name: Update Helm repositories
@@ -169,7 +178,7 @@ jobs:
           helm package . --version ${{ env.CHART_VERSION }}
 
       - name: Upload chart artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: chart-${{ matrix.chart }}-${{ env.CHART_VERSION }}
           path: charts/${{ matrix.chart }}/${{ matrix.chart }}-${{ env.CHART_VERSION }}.tgz
@@ -188,10 +197,19 @@ jobs:
       charts-published: ${{ steps.collect.outputs.charts }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
-      - uses: mikefarah/yq@5a7e72a743649b1b3a47d1a1d8214f3453173c51 # v4.52.4
+      - name: Install yq
+        env:
+          YQ_VERSION: v4.53.2
+          YQ_SHA256: d56bf5c6819e8e696340c312bd70f849dc1678a7cda9c2ad63eebd906371d56b
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /tmp/yq
+          echo "${YQ_SHA256}  /tmp/yq" | sha256sum -c -
+          sudo install -m 0755 /tmp/yq /usr/local/bin/yq
+          yq --version
 
       - name: Get chart version
         id: vars
@@ -202,7 +220,7 @@ jobs:
           echo "REPOSITORY=${repository@L}" >> $GITHUB_ENV
 
       - name: Download chart artifact
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: chart-${{ matrix.chart }}-${{ env.CHART_VERSION }}
           path: charts/${{ matrix.chart }}/
@@ -243,12 +261,21 @@ jobs:
       contents: write # Required for chart-releaser to push to gh-pages branch
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
       - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
-      - uses: mikefarah/yq@5a7e72a743649b1b3a47d1a1d8214f3453173c51 # v4.52.4
+      - name: Install yq
+        env:
+          YQ_VERSION: v4.53.2
+          YQ_SHA256: d56bf5c6819e8e696340c312bd70f849dc1678a7cda9c2ad63eebd906371d56b
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o /tmp/yq
+          echo "${YQ_SHA256}  /tmp/yq" | sha256sum -c -
+          sudo install -m 0755 /tmp/yq /usr/local/bin/yq
+          yq --version
 
       - name: Get repository info
         run: |
