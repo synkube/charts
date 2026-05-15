@@ -36,7 +36,7 @@ jobs:
         run: mkdir -p results-dir
 
       - name: Run KICS
-        uses: synkube/actions/.github/actions/kics-github-action@main
+        uses: synkube/actions/.github/actions/kics-github-action@9f425ac79ec75ce388b4e27528784a095a272584 # v1.0.0
         with:
           path: .
           token: ${{ secrets.GITHUB_TOKEN }}
