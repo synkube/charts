@@ -28,14 +28,14 @@ jobs:
       charts: ${{ steps.matrix.outputs.charts }}
       has-changes: ${{ steps.matrix.outputs.has-changes }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
 
       - name: Get changed files
         id: changes
         if: ${{ github.event_name != 'workflow_dispatch' }}
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
 
       - name: Detect changed charts
         id: matrix
@@ -122,7 +122,7 @@ jobs:
         chart: ${{ fromJSON(needs.detect-changes.outputs.charts) }}
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
       - name: Install yq
@@ -135,7 +135,7 @@ jobs:
           echo "${YQ_SHA256}  /tmp/yq" | sha256sum -c -
           sudo install -m 0755 /tmp/yq /usr/local/bin/yq
           yq --version
-      - uses: azure/setup-kubectl@776406bce94f63e41d621b960d78ee25c8b76ede # v4.0.1
+      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
 
       - name: Update Helm repositories
         run: |
@@ -197,7 +197,7 @@ jobs:
       charts-published: ${{ steps.collect.outputs.charts }}
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
       - name: Install yq
@@ -226,7 +226,7 @@ jobs:
           path: charts/${{ matrix.chart }}/
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -261,7 +261,7 @@ jobs:
       contents: write # Required for chart-releaser to push to gh-pages branch
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
 
