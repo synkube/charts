@@ -27,6 +27,7 @@ env:
 jobs:
   kics:
     name: kics-iac
+    if: vars.CI_G_KICS_ENABLED != 'false'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
