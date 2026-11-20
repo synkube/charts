@@ -43,10 +43,10 @@ externalSecrets: {}
   #   data:
   #     - secretKey: client-id
   #       remoteRef:
-  #         key: /k8s/platform/oauth2_proxy_github_client_id
+  #         key: /k8s/platform/unified_github_oauth_client_id
   #     - secretKey: client-secret
   #       remoteRef:
-  #         key: /k8s/platform/oauth2_proxy_github_client_secret
+  #         key: /k8s/platform/unified_github_oauth_client_secret
   #     - secretKey: cookie-secret
   #       remoteRef:
   #         key: /k8s/platform/oauth2_proxy_cookie_secret
