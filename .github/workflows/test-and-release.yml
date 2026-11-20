@@ -135,7 +135,7 @@ jobs:
           echo "${YQ_SHA256}  /tmp/yq" | sha256sum -c -
           sudo install -m 0755 /tmp/yq /usr/local/bin/yq
           yq --version
-      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+      - uses: azure/setup-kubectl@bda439f5f36b99b262ebdcd3613869bddb064c8e # v5.2.0
 
       - name: Update Helm repositories
         run: |
@@ -178,7 +178,7 @@ jobs:
           helm package . --version ${{ env.CHART_VERSION }}
 
       - name: Upload chart artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: chart-${{ matrix.chart }}-${{ env.CHART_VERSION }}
           path: charts/${{ matrix.chart }}/${{ matrix.chart }}-${{ env.CHART_VERSION }}.tgz
@@ -220,13 +220,13 @@ jobs:
           echo "REPOSITORY=${repository@L}" >> $GITHUB_ENV
 
       - name: Download chart artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: chart-${{ matrix.chart }}-${{ env.CHART_VERSION }}
           path: charts/${{ matrix.chart }}/
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -324,7 +324,7 @@ jobs:
           echo "✅ Cleanup complete"
 
       - name: Run chart-releaser
-        uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1.7.0
+        uses: helm/chart-releaser-action@df287104677278f869ca5480bd260358397cc3f9 # v1.8.0
         env:
           CR_TOKEN: ${{ github.token }}
         with:
